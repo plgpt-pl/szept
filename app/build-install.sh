@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Buduje Szept i instaluje na iPhonie Adama (profil darmowego konta Apple wazny 7 dni; po aktywacji Apple Developer -> TestFlight).
+# Buduje Szept i instaluje na iPhonie Adama (Apple Developer Program od 19.10.2026, team R8M2B5S4G3, profil roczny; przy 7-dniowym profilu usunac stary z ~/Library/Developer/Xcode/UserData/Provisioning Profiles).
 set -e; cd "$(dirname "$0")"; export PATH=/opt/homebrew/bin:$PATH
 UDID=${1:-163FA4C3-2260-5F19-B639-237CF2661794}
 xcodegen generate >/dev/null
