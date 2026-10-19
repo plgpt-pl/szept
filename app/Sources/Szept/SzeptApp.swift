@@ -17,9 +17,9 @@ struct SzeptApp: App {
             Group {
                 if engine.isRegistered { MainView(pendingLink: $pendingLink) } else { OnboardingView() }
             }
+            .overlay { if lock.locked { LockScreen() } }   // overlay PRZED .environment – inaczej LockScreen nie widzi AppLock (crash na starcie przy włączonej blokadzie)
             .environment(engine)
             .environment(lock)
-            .overlay { if lock.locked { LockScreen() } }
             .preferredColorScheme(appearance == "system" ? nil : (appearance == "light" ? .light : .dark))
             .tint(Sowa.cyan)
             .onOpenURL { url in pendingLink = ContactLink(string: url.absoluteString) }
