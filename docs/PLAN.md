@@ -38,3 +38,7 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 - **Crash 0.1.1 na starcie** przy włączonej blokadzie Face ID (LockScreen w `.overlay` przed `.environment`) – naprawiony w 0.1.2; build 1 wycofany z TestFlight.
 - **Serwer**: 301 HTTP→HTTPS (CF-Visitor / X-Forwarded-Proto), HSTS, CSP, nosniff, DENY, Referrer-Policy; strona czyta wersję i SHA-256 APK z plików `szept.apk.version` / `szept.apk.sha256` (`tools/publish-apk.sh`); link TestFlight na stronie. Uwagi z zewnętrznego przeglądu strony (brak przekierowania, HSTS, nagłówków) – ZAŁATWIONE; brak publicznego repozytorium – OTWARTE (decyzja usera gdzie publikować, AGPL).
 - **TestFlight**: deklaracja szyfrowania NIE przenosi się między buildami i API nie obsługuje wariantu „standardowe algorytmy, bez Francji” (brak zasobu `appEncryptionDeclarations` po odpowiedzi w UI) → przy każdym buildzie 4 kliknięcia usera w ASC (albo automatyzacja Chrome). Do sprawdzenia: `ITSEncryptionExportComplianceCode`.
+
+## Publikacja kodu (19.10.2026)
+- Repozytorium publiczne: https://github.com/plgpt-pl/szept (organizacja `plgpt-pl` na koncie GitHub `mlodykawa`; konto `plgpt` należy do kogoś innego). Licencja AGPL-3.0 (`LICENSE`).
+- Poza gitem: `~/.config/appstoreconnect/` (klucz ASC, cert dystrybucyjny), `android/keystore.properties` + keystore, `server/.env`, `server/data/`.

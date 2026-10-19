@@ -1,5 +1,7 @@
 # Szept – prywatny komunikator (zestaw PLGPT)
 
+https://szept.plgpt.pl · Android APK + iOS (TestFlight) · licencja AGPL-3.0
+
 Komunikator end-to-end bez numerów telefonu i kont, na własnym serwerze. Kryptografia: **libsignal**
 (oficjalna biblioteka Signala: PQXDH + Double Ratchet + HPKE), my piszemy tylko aplikację i cienki serwer-skrzynkę.
 
@@ -31,8 +33,8 @@ cd server && python3 -m venv .venv && .venv/bin/pip install aiohttp pytest pytes
 cd vendor && ./fetch-libsignal.sh    # ~180 MB prebuilt z build-artifacts.signal.org, suma SHA-256 z GitHub
 cd ../app && xcodegen generate && xcodebuild -scheme Szept -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
-Testy: serwer 7 (pytest), iOS 8 testów protokołu + 1 e2e przez prawdziwy serwer lokalny (dwa „telefony” w jednym procesie),
-Android 3 (instrumentowane na emulatorze, w tym e2e przez serwer) + test interop iOS↔Android (`InteropTest` z `-e interop 1`
+Testy: serwer 8 (pytest), iOS 13 (protokół, e2e przez prawdziwy serwer lokalny – dwa „telefony” w jednym procesie, grupa 3 telefonów),
+Android 5 (instrumentowane na emulatorze, w tym e2e i grupa przez serwer) + test interop iOS↔Android (`InteropTest` z `-e interop 1`
 i `InteropTests` z linkiem partnera w `/tmp/szept-peer-link`). Tryb zrzutów w symulatorze iOS: `-demo` / `-demo -demo-open`.
 
 ```bash
@@ -43,7 +45,9 @@ cd android && ./gradlew :app:connectedDebugAndroidTest          # testy; serwer 
 Android: brak usług Google – powiadomienia przez własne stałe połączenie WebSocket (usługa „Szept nasłuchuje”, do wyłączenia
 w Ustawieniach). Biblioteki JNI libsignal są odchudzane NDK (117 MB → 9 MB na architekturę); bez NDK APK ma 1,1 GB.
 
-## Licencja
-libsignal jest na **AGPL-3.0**. Aplikacja, która go linkuje i jest rozpowszechniana publicznie, musi udostępniać swój kod
-źródłowy na AGPL (albo trzeba kupić inną licencję od Signal Messenger LLC). Przy promocji „lokalne i bezpieczne narzędzia”
-otwarty kod jest zresztą atutem – zob. docs/PLAN.md.
+## Licencja i zgłaszanie błędów
+Cały kod Szeptu (serwer, iOS, Android) jest na **AGPL-3.0** – plik `LICENSE`. libsignal (Signal Messenger LLC) również jest
+na AGPL-3.0, stąd wybór licencji. Publiczne repozytorium: <https://github.com/plgpt-pl/szept>.
+
+Błędy bezpieczeństwa zgłaszaj przez Issues (bez szczegółów exploita) albo bezpośrednio do autora; nigdy nie wklejaj
+prywatnych kluczy ani logów z treścią wiadomości. Model zagrożeń i to, czego serwer **nie** widzi: `docs/PRYWATNOSC.md`.
