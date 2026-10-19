@@ -261,10 +261,12 @@ struct ContactLink: Equatable {
     var url: URL {
         var c = URLComponents()
         c.scheme = Config.linkScheme; c.host = "add"
-        var items = [URLQueryItem(name: "i", value: accountId),
-                     URLQueryItem(name: "k", value: identityKey.base64EncodedString())]
-        if let name, !name.isEmpty { items.append(URLQueryItem(name: "n", value: name)) }
-        c.queryItems = items
+        // '+' i '/' z base64 kodowane procentowo, żeby parsery zapytań (np. Android) nie zamieniały '+' na spację
+        var allowed = CharacterSet.alphanumerics; allowed.insert(charactersIn: "-._~")
+        func enc(_ s: String) -> String { s.addingPercentEncoding(withAllowedCharacters: allowed) ?? s }
+        var items = [URLQueryItem(name: "i", value: enc(accountId)), URLQueryItem(name: "k", value: enc(identityKey.base64EncodedString()))]
+        if let name, !name.isEmpty { items.append(URLQueryItem(name: "n", value: enc(name))) }
+        c.percentEncodedQueryItems = items
         return c.url!
     }
 

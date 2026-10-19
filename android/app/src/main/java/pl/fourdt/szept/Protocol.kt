@@ -157,11 +157,13 @@ data class ContactLink(val accountId: String, val identityKey: ByteArray, val na
             return try {
                 val u = Uri.parse(s.trim())
                 if (u.scheme != "szept" || u.host != "add") return null
-                val i = u.getQueryParameter("i") ?: return null
-                val k = u.getQueryParameter("k")?.unb64() ?: return null
+                // ręczne parsowanie: getQueryParameter zamienia '+' na spację, a '+' występuje w base64 klucza (link z iOS)
+                val q = (u.encodedQuery ?: return null).split("&").mapNotNull { kv -> kv.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to Uri.decode(it[1]) } }.toMap()
+                val i = q["i"] ?: return null
+                val k = q["k"]?.unb64() ?: return null
                 if (i.isEmpty() || i.length > 64) return null
                 IdentityKey(k)  // walidacja klucza
-                ContactLink(i, k, u.getQueryParameter("n"))
+                ContactLink(i, k, q["n"])
             } catch (e: Exception) { null }
         }
     }
