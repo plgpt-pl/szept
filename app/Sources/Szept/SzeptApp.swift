@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import BackgroundTasks
 
 @main
 struct SzeptApp: App {
@@ -8,6 +9,8 @@ struct SzeptApp: App {
     @State private var lock = AppLock()
     @AppStorage("appearance") private var appearance = "dark"
     @State private var pendingLink: ContactLink?
+
+    init() { BackgroundRefresh.register() }
 
     var body: some Scene {
         WindowGroup {
@@ -25,7 +28,7 @@ struct SzeptApp: App {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active: lock.onActive(); engine.start(); if engine.connection != .online { engine.connect() }
-            case .background: lock.onBackground()
+            case .background: lock.onBackground(); BackgroundRefresh.schedule()
             default: break
             }
         }

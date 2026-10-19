@@ -416,6 +416,17 @@ async def health(req):
     return web.json_response({"ok": True, "service": "szept", "v": 1})
 
 
+STATIC = Path(__file__).parent / "static"
+
+
+async def index(req):
+    return web.FileResponse(STATIC / "index.html")
+
+
+async def icon(req):
+    return web.FileResponse(STATIC / "ikona.png")
+
+
 async def cleanup_loop(app):
     while True:
         try:
@@ -446,6 +457,8 @@ def make_app(data_dir: Path = DATA) -> web.Application:
             ev.set()
     app["wake"] = wake
     app.add_routes([
+        web.get("/", index),
+        web.get("/ikona.png", icon),
         web.get("/health", health),
         web.post("/v1/accounts", register),
         web.delete("/v1/accounts", delete_account),

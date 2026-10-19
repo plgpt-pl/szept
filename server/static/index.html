@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Szept – rozmowy, których nikt poza Wami nie przeczyta</title>
+<meta name="description" content="Prywatny komunikator bez numeru telefonu i konta. Szyfrowanie end-to-end protokołem Signal, własny serwer, zero chmury.">
+<link rel="icon" href="/ikona.png">
+<style>
+:root{--bg:#0A0E2B;--bg2:#2A1456;--card:#141A3E;--border:#2C356E;--text:#F1F2FA;--muted:#A2ACDC;--cyan:#5CE6FF;--magenta:#DA6CFF;--violet:#6B4DFF}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:linear-gradient(135deg,var(--bg),var(--bg2)) fixed;line-height:1.55}
+main{max-width:860px;margin:0 auto;padding:48px 16px 80px}
+header{text-align:center}header img{width:128px;height:128px;border-radius:28px;box-shadow:0 0 40px rgba(92,230,255,.35)}
+h1{font-size:44px;margin:16px 0 4px;background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);font-size:20px;margin:0 0 32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:28px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+.card h3{margin:0 0 6px;font-size:17px;color:var(--cyan)}.card p{margin:0;color:var(--muted);font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{color:var(--muted);font-weight:600}
+.yes{color:#4AE39E}.no{color:#FF6B8A}
+.btn{display:inline-block;padding:12px 22px;border-radius:999px;background:linear-gradient(135deg,var(--magenta),var(--violet));color:#fff;text-decoration:none;font-weight:600;margin:6px 6px 0 0}
+.btn.sec{background:transparent;border:1px solid var(--border)}
+h2{margin-top:40px}code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}
+footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
+</style>
+</head>
+<body><main>
+<header>
+<img src="/ikona.png" alt="Szept">
+<h1>Szept</h1>
+<p class="lead">Rozmowy, których nikt poza Wami nie przeczyta. Bez numeru telefonu, bez konta, bez chmury.</p>
+<a class="btn" href="#pobierz">Pobierz (wkrótce)</a>
+<a class="btn sec" href="#serwer">Co widzi serwer?</a>
+</header>
+
+<div class="grid">
+<div class="card"><h3>Bez tożsamości</h3><p>Nie podajesz numeru, e-maila ani nazwiska. Twoja tożsamość to klucz wygenerowany na telefonie. Kontakt dodajesz kodem QR albo linkiem.</p></div>
+<div class="card"><h3>Protokół Signal</h3><p>Szyfrowanie end-to-end biblioteką libsignal, tą samą, której używa aplikacja Signal: PQXDH (odporność postkwantowa) i Double Ratchet.</p></div>
+<div class="card"><h3>Serwer nie wie, kto do kogo</h3><p>Każda wiadomość jest dodatkowo zapieczętowana do klucza odbiorcy, a wysyłka jest anonimowa. Serwer trzyma kopertę tylko do chwili odbioru.</p></div>
+<div class="card"><h3>Znikające wiadomości</h3><p>Od 30 sekund do tygodnia, znikają u obu stron. Blokada Face ID. Dane poza kopią zapasową iCloud.</p></div>
+<div class="card"><h3>Bez pushy przez Apple</h3><p>Żadna informacja o Twoich wiadomościach nie przechodzi przez serwery Apple ani Google. To świadomy wybór.</p></div>
+<div class="card"><h3>Otwarty kod</h3><p>Aplikacja i serwer na licencji AGPL. Możesz postawić własny serwer i wpisać jego adres w ustawieniach.</p></div>
+</div>
+
+<h2 id="serwer">Co widzi kto</h2>
+<table>
+<tr><th>Dane</th><th>Ty i rozmówca</th><th>Serwer Szept</th><th>Apple / Google</th></tr>
+<tr><td>Treść wiadomości i zdjęć</td><td class="yes">tak</td><td class="no">nie</td><td class="no">nie</td></tr>
+<tr><td>Kto do kogo pisze</td><td class="yes">tak</td><td class="no">nie</td><td class="no">nie</td></tr>
+<tr><td>Numer telefonu, e-mail, nazwisko</td><td>–</td><td class="no">nie istnieją w systemie</td><td class="no">nie</td></tr>
+<tr><td>Że konto X odebrało coś o danej godzinie</td><td>–</td><td>tak, na czas doręczenia</td><td class="no">nie</td></tr>
+<tr><td>Adres IP</td><td>–</td><td>nie zapisywany</td><td class="no">nie</td></tr>
+<tr><td>Kopia w chmurze</td><td>–</td><td>–</td><td class="no">nie</td></tr>
+</table>
+<p style="color:var(--muted);font-size:14px">Serwer publiczny stoi za Cloudflare, które widzi adres IP i czas połączenia (nie treść, nie nadawcę). Jeśli to za dużo, uruchom własny serwer – instrukcja w repozytorium.</p>
+
+<h2 id="pobierz">Pobierz</h2>
+<p>iPhone: wersja testowa przez TestFlight – wkrótce. Android: w przygotowaniu. Programiści: serwer to jeden plik Pythona, API opisane w <code>szept_server.py</code>.</p>
+
+<footer>Szept · część zestawu narzędzi PLGPT · libsignal © Signal Messenger LLC (AGPL-3.0)</footer>
+</main></body></html>
