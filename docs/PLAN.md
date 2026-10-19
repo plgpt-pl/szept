@@ -24,3 +24,10 @@
 
 ## Jak zbudować kolejną apkę z tej rodziny
 Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży Android i desktop. Paleta `Sowa` i ikona w stylu PLGPT.
+
+## TestFlight (19.10.2026)
+- App Store Connect: apka „Szept – prywatny czat” (id 6824586767, bundle `pl.plgpt.szept`, SKU `pl.plgpt.szept`), grupa wewnętrzna „Wewnętrzni” (17c7a80c-…), tester Adam.
+- Klucz API `2X3F542W54` (App Manager) w `~/.config/appstoreconnect/` (env + .p8), klient `tools/asc.py` (`asc.py GET /v1/apps`).
+- Klucz App Manager NIE ma podpisu w chmurze → lokalny certyfikat „Apple Distribution: Adam Dabrowski” (RA2ZYXP9Y7, klucz `~/.config/appstoreconnect/dist.key`) i profil „Szept App Store” (IOS_APP_STORE) utworzone przez API; `app/ExportOptions.plist` = podpis ręczny.
+- Wysyłka: `xcodebuild archive` (Release, `-derivedDataPath .build-archive`) → `xcodebuild -exportArchive -exportOptionsPlist ExportOptions.plist` z `-authenticationKey*`. Pierwszy build 0.1.1 (1) wysłany 18:48.
+- Do zrobienia: deklaracja eksportowa (szyfrowanie nieobjęte wyjątkiem, libsignal), grupa zewnętrzna (Ola i inni – wymaga Beta App Review + kontaktu z telefonem), weryfikacja DSA (dokument CEIDG) przed publikacją w App Store.
