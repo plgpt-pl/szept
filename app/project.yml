@@ -1,0 +1,90 @@
+name: Szept
+options:
+  bundleIdPrefix: pl.4dt
+  developmentLanguage: pl
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: R8M2B5S4G3
+    CODE_SIGN_STYLE: Automatic
+targets:
+  # libsignal (Rust, AGPL) – oficjalny wrapper Swift skopiowany 1:1 z signalapp/libsignal, dolinkowany
+  # do prebuilt libsignal_ffi.a (vendor/fetch-libsignal.sh), tak jak robi to podspec Signala.
+  LibSignalClient:
+    type: framework
+    platform: iOS
+    sources:
+      - path: ../vendor/LibSignalClient/Sources/LibSignalClient
+    settings:
+      base:
+        PRODUCT_NAME: LibSignalClient
+        PRODUCT_BUNDLE_IDENTIFIER: pl.4dt.szept.libsignal
+        MACH_O_TYPE: staticlib
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        SWIFT_PACKAGE_NAME: LibSignalClient
+        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/../vendor/LibSignalClient/Sources/SignalFfi"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../vendor/LibSignalClient/Sources/SignalFfi"
+        SWIFT_ENABLE_EXPLICIT_MODULES: NO
+        SWIFT_STRICT_CONCURRENCY: minimal
+        BUILD_LIBRARY_FOR_DISTRIBUTION: NO
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
+        SWIFT_SUPPRESS_WARNINGS: YES
+  Szept:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/Szept
+    info:
+      path: Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: pl.4dt.szept
+            CFBundleURLSchemes: [szept]
+        UIBackgroundModes: [fetch]
+    dependencies:
+      - target: LibSignalClient
+        embed: false
+    settings:
+      base:
+        PRODUCT_NAME: Szept
+        PRODUCT_MODULE_NAME: Szept
+        PRODUCT_BUNDLE_IDENTIFIER: pl.4dt.szept
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Szept"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Skanowanie kodu QR kontaktu i zdjęcia do wysłania."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Wybór zdjęcia do wysłania (zaszyfrowanego)."
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Odblokowanie aplikacji Szept."
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/../vendor/LibSignalClient/Sources/SignalFfi"
+        "OTHER_LDFLAGS[sdk=iphoneos*]": "$(inherited) -lc++ $(SRCROOT)/../vendor/ffi/target/aarch64-apple-ios/release/libsignal_ffi.a"
+        "OTHER_LDFLAGS[sdk=iphonesimulator*]": "$(inherited) -lc++ $(SRCROOT)/../vendor/build/libsignal_ffi_sim.a"
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-Owholemodule"
+    scheme:
+      testTargets:
+        - SzeptTests
+  SzeptTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/SzeptTests
+    dependencies:
+      - target: Szept
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: pl.4dt.szept.tests
+        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/../vendor/LibSignalClient/Sources/SignalFfi"

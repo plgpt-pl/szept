@@ -1,0 +1,15 @@
+vendor/libsignal-ios.tar.gz
+vendor/ffi/
+vendor/libsignal/
+server/.venv/
+server/data/
+server/.env
+server/logs/
+app/.build/
+app/*.xcodeproj
+app/Sources/Szept/Secrets.swift
+__pycache__/
+.DS_Store
+vendor/build/
+app/.build-device/
+app/Info.plist

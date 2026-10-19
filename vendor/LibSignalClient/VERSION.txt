@@ -1,0 +1,1 @@
+libsignal v0.105.1 (AGPL-3.0-only), https://github.com/signalapp/libsignal — Swift wrapper skopiowany 1:1 ze swift/Sources; biblioteki .a pobiera fetch-libsignal.sh

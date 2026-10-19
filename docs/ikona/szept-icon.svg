@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A0E2B"/><stop offset="1" stop-color="#2A1456"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1B2A5E"/><stop offset="1" stop-color="#3A1E78"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5CE6FF"/><stop offset="1" stop-color="#DA6CFF"/>
+    </linearGradient>
+    <radialGradient id="glowc" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#5CE6FF" stop-opacity="0.55"/><stop offset="1" stop-color="#5CE6FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowm" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#DA6CFF" stop-opacity="0.5"/><stop offset="1" stop-color="#DA6CFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="300" cy="260" r="330" fill="url(#glowc)"/>
+  <circle cx="760" cy="800" r="330" fill="url(#glowm)"/>
+
+  <!-- dymek rozmowy -->
+  <g>
+    <path d="M232 230 h560 a74 74 0 0 1 74 74 v372 a74 74 0 0 1 -74 74 h-298 l-150 118 q-20 16 -20 -10 v-108 h-92 a74 74 0 0 1 -74 -74 v-372 a74 74 0 0 1 74 -74 z"
+          fill="none" stroke="url(#neon)" stroke-width="30" stroke-linejoin="round" filter="url(#blur)" opacity="0.9"/>
+    <path d="M232 230 h560 a74 74 0 0 1 74 74 v372 a74 74 0 0 1 -74 74 h-298 l-150 118 q-20 16 -20 -10 v-108 h-92 a74 74 0 0 1 -74 -74 v-372 a74 74 0 0 1 74 -74 z"
+          fill="url(#bubble)" stroke="url(#neon)" stroke-width="16" stroke-linejoin="round"/>
+  </g>
+
+  <!-- sowa (głowa) -->
+  <g transform="translate(512 470)">
+    <!-- uszy -->
+    <path d="M-150 -120 l-30 -92 l88 50 z" fill="#2A1456" stroke="#5CE6FF" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M150 -120 l30 -92 l-88 50 z" fill="#2A1456" stroke="#DA6CFF" stroke-width="10" stroke-linejoin="round"/>
+    <!-- głowa -->
+    <ellipse cx="0" cy="-30" rx="178" ry="150" fill="#150E3A" stroke="url(#neon)" stroke-width="10"/>
+    <!-- oczy: poświata -->
+    <circle cx="-72" cy="-40" r="62" fill="#5CE6FF" opacity="0.35" filter="url(#soft)"/>
+    <circle cx="72" cy="-40" r="62" fill="#DA6CFF" opacity="0.35" filter="url(#soft)"/>
+    <!-- oczy -->
+    <circle cx="-72" cy="-40" r="56" fill="#0A0E2B" stroke="#5CE6FF" stroke-width="10"/>
+    <circle cx="72" cy="-40" r="56" fill="#0A0E2B" stroke="#DA6CFF" stroke-width="10"/>
+    <circle cx="-72" cy="-40" r="24" fill="#5CE6FF"/>
+    <circle cx="72" cy="-40" r="24" fill="#DA6CFF"/>
+    <circle cx="-62" cy="-52" r="8" fill="#FFFFFF"/>
+    <circle cx="82" cy="-52" r="8" fill="#FFFFFF"/>
+    <!-- dziób -->
+    <path d="M-20 10 l20 40 l20 -40 z" fill="#DA6CFF"/>
+  </g>
+
+  <!-- kłódka (prawy dół dymka, zachodzi na krawędź) -->
+  <g transform="translate(730 650)">
+    <circle cx="0" cy="20" r="120" fill="url(#glowm)" opacity="0.9"/>
+    <rect x="-78" y="-10" width="156" height="128" rx="26" fill="#1B1040" stroke="url(#neon)" stroke-width="12"/>
+    <path d="M-48 -10 v-40 a48 48 0 0 1 96 0 v40" fill="none" stroke="#5CE6FF" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="0" cy="48" r="16" fill="#5CE6FF"/>
+    <rect x="-7" y="52" width="14" height="36" rx="6" fill="#5CE6FF"/>
+  </g>
+</svg>
