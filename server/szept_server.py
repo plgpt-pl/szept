@@ -427,6 +427,15 @@ async def icon(req):
     return web.FileResponse(STATIC / "ikona.png")
 
 
+async def apk(req):
+    return web.FileResponse(STATIC / "szept.apk", headers={"Content-Type": "application/vnd.android.package-archive",
+                                                           "Content-Disposition": 'attachment; filename="szept.apk"'})
+
+
+async def apk_sum(req):
+    return web.FileResponse(STATIC / "szept.apk.sha256", headers={"Content-Type": "text/plain"})
+
+
 async def cleanup_loop(app):
     while True:
         try:
@@ -459,6 +468,8 @@ def make_app(data_dir: Path = DATA) -> web.Application:
     app.add_routes([
         web.get("/", index),
         web.get("/ikona.png", icon),
+        web.get("/szept.apk", apk),
+        web.get("/szept.apk.sha256", apk_sum),
         web.get("/health", health),
         web.post("/v1/accounts", register),
         web.delete("/v1/accounts", delete_account),

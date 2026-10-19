@@ -6,6 +6,7 @@ Komunikator end-to-end bez numerów telefonu i kont, na własnym serwerze. Krypt
 ```
 szept/
 ├── app/        iOS 17+, SwiftUI + SwiftData, xcodegen (project.yml) – `./build-install.sh` buduje i instaluje na iPhone
+├── android/    Android 8+, Kotlin + Compose, libsignal-android 0.105.1 (repo Maven Signala), ten sam protokół i serwer
 ├── server/     aiohttp + SQLite, port 127.0.0.1:11437, LaunchAgent com.4dt.szept-server, publicznie https://szept.plgpt.pl
 ├── vendor/     libsignal 0.105.1 (wrapper Swift 1:1 + prebuilt libsignal_ffi.a przez fetch-libsignal.sh)
 └── docs/       PLAN.md (moduły/status), PRYWATNOSC.md (model zagrożeń), ikona/
@@ -30,8 +31,17 @@ cd server && python3 -m venv .venv && .venv/bin/pip install aiohttp pytest pytes
 cd vendor && ./fetch-libsignal.sh    # ~180 MB prebuilt z build-artifacts.signal.org, suma SHA-256 z GitHub
 cd ../app && xcodegen generate && xcodebuild -scheme Szept -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
-Testy: serwer 7 (pytest), apka 8 testów protokołu + 1 e2e przez prawdziwy serwer lokalny (dwa „telefony” w jednym procesie).
-Tryb zrzutów ekranu w symulatorze: argumenty `-demo` (lista) i `-demo -demo-open` (rozmowa).
+Testy: serwer 7 (pytest), iOS 8 testów protokołu + 1 e2e przez prawdziwy serwer lokalny (dwa „telefony” w jednym procesie),
+Android 3 (instrumentowane na emulatorze, w tym e2e przez serwer) + test interop iOS↔Android (`InteropTest` z `-e interop 1`
+i `InteropTests` z linkiem partnera w `/tmp/szept-peer-link`). Tryb zrzutów w symulatorze iOS: `-demo` / `-demo -demo-open`.
+
+```bash
+# Android (emulator wr4pme albo telefon przez adb)
+cd android && ./gradlew :app:connectedDebugAndroidTest          # testy; serwer lokalny widoczny jako 10.0.2.2:11437
+./gradlew :app:assembleRelease                                   # podpis z keystore.properties (poza gitem), APK → server/static/szept.apk
+```
+Android: brak usług Google – powiadomienia przez własne stałe połączenie WebSocket (usługa „Szept nasłuchuje”, do wyłączenia
+w Ustawieniach). Biblioteki JNI libsignal są odchudzane NDK (117 MB → 9 MB na architekturę); bez NDK APK ma 1,1 GB.
 
 ## Licencja
 libsignal jest na **AGPL-3.0**. Aplikacja, która go linkuje i jest rozpowszechniana publicznie, musi udostępniać swój kod

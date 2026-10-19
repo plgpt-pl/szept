@@ -29,7 +29,7 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 <img src="/ikona.png" alt="Szept">
 <h1>Szept</h1>
 <p class="lead">Rozmowy, których nikt poza Wami nie przeczyta. Bez numeru telefonu, bez konta, bez chmury.</p>
-<a class="btn" href="#pobierz">Pobierz (wkrótce)</a>
+<a class="btn" href="#pobierz">Pobierz</a>
 <a class="btn sec" href="#serwer">Co widzi serwer?</a>
 </header>
 
@@ -55,7 +55,13 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 <p style="color:var(--muted);font-size:14px">Serwer publiczny stoi za Cloudflare, które widzi adres IP i czas połączenia (nie treść, nie nadawcę). Jeśli to za dużo, uruchom własny serwer – instrukcja w repozytorium.</p>
 
 <h2 id="pobierz">Pobierz</h2>
-<p>iPhone: wersja testowa przez TestFlight – wkrótce. Android: w przygotowaniu. Programiści: serwer to jeden plik Pythona, API opisane w <code>szept_server.py</code>.</p>
+<div class="grid">
+<div class="card"><h3>Android</h3><p>Plik APK do instalacji bezpośredniej (bez Google Play, bez usług Google). Android 8 lub nowszy.</p>
+<p style="margin-top:10px"><a class="btn" href="/szept.apk">Pobierz szept.apk (0.1.0)</a></p>
+<p style="margin-top:10px;font-size:12px;word-break:break-all">SHA-256: <code>fc7e1ce9cdf93e61930fd758f2a14eef510a809d9b69cd9e2e89116d20e3f7be</code></p></div>
+<div class="card"><h3>iPhone</h3><p>Wersja testowa przez TestFlight – wkrótce (po aktywacji konta deweloperskiego). Wymaga iOS 17.</p></div>
+<div class="card"><h3>Programiści</h3><p>Serwer to jeden plik Pythona (aiohttp + SQLite), API opisane w <code>szept_server.py</code>. Własny serwer wpisujesz w ustawieniach apki.</p></div>
+</div>
 
 <footer>Szept · część zestawu narzędzi PLGPT · libsignal © Signal Messenger LLC (AGPL-3.0)</footer>
 </main></body></html>

@@ -7,11 +7,11 @@
 | M03 Magazyn kluczy | SignalStore: pliki z Data Protection, poza backupem; tożsamość, prekeys, Kyber, sesje, klucze kontaktów (TOFU + przypinanie) | ✅ |
 | M04 Protokół Szept | rejestracja, dosyłanie kluczy, sesja z bundle (z weryfikacją przypiętego klucza), koperta HPKE, załączniki GCM-SIV, numer bezpieczeństwa, link/QR | ✅ 8 testów |
 | M05 Silnik + UI | onboarding, lista, czat (tekst, zdjęcia, potwierdzenia, ponów), QR (pokaz/skan/wklej), info kontaktu + weryfikacja, znikające wiadomości (sync obu stron), ustawienia, Face ID, usuń wszystko, motyw Sowa | ✅ e2e przez serwer |
-| M06 Instalacja na iPhone | build-install.sh | ⛔ darmowy profil Apple: limit 3 app-id (ops, wolnyczat, wr4pme) – czeka na aktywację Apple Developer albo usunięcie jednej apki |
-| M07 Powiadomienia | opcja A: pusty push APNs „Nowa wiadomość” (Apple widzi tylko fakt i czas); opcja B: brak pushy, odświeżanie przy otwarciu (obecnie) + BGAppRefresh | do decyzji |
-| M08 Android | Kotlin/Compose, libsignal-android (Maven), ten sam serwer; powiadomienia własnym kanałem WS bez Google | do zrobienia |
+| M06 Instalacja na iPhone | build-install.sh | ⛔ darmowy profil Apple: limit 3 app-id (ops, wolnyczat, wr4pme) – czeka na aktywację Apple Developer albo usunięcie jednej apki (klasyfikator nie pozwolił mi odinstalować bez zgody usera) |
+| M07 Powiadomienia | iOS: BGAppRefresh (bez APNs) ✅ 0.1.1; opcja pustego pusha APNs do decyzji. Android: własny kanał WS w usłudze pierwszoplanowej ✅ | częściowo |
+| M08 Android | Kotlin/Compose, libsignal-android 0.105.1, ten sam serwer; parytet funkcji z iOS; usługa nasłuchu bez Google; APK release podpisany | ✅ 3 testy + interop z iOS przez serwer |
 | M09 Grupy | Sender Keys (libsignal groupEncrypt/groupDecrypt), dystrybucja kluczy w kopertach 1:1 | do zrobienia |
-| M10 Publikacja | TestFlight (po Apple Developer), repo publiczne na AGPL, strona szept.plgpt.pl z linkiem i opisem „co widzi serwer” | do zrobienia |
+| M10 Publikacja | strona szept.plgpt.pl ✅ + APK do pobrania z SHA-256 ✅; TestFlight (po Apple Developer); repo publiczne na AGPL | częściowo |
 | M11 Metadane | tryb Tor (klient przez onion), rotacja signed prekey co 7 dni, padding długości kopert | pomysły |
 
 ## Decyzje
