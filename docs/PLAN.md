@@ -15,7 +15,7 @@
 | M11 Metadane | tryb Tor (klient przez onion), rotacja signed prekey co 7 dni, padding długości kopert | pomysły |
 
 ## Decyzje
-- Nazwa robocza **Szept** (do zmiany; bundle `pl.4dt.szept`, schemat linków `szept://`).
+- Nazwa robocza **Szept** (do zmiany; bundle `pl.plgpt.szept` (od 19.10, wcześniej pl.4dt.szept – Szept należy do linii PLGPT), schemat linków `szept://`).
 - Serwer za Cloudflare Tunnel (`bybit-bot`): Cloudflare widzi IP klientów i rozmiary/czas kopert, nie treść i nie nadawcę. Alternatywa bez CF: VPS z własnym TLS albo onion.
 - Brak pushy w v0.1: WebSocket działa, gdy apka jest otwarta (i chwilę po zejściu do tła). To świadomy kompromis prywatności na iOS.
 - Nadawca nie uwierzytelnia się przy wysyłce → spam możliwy tylko znając czyjś 128-bitowy `account_id` (nie do zgadnięcia); limit 240 zapytań/min/IP.

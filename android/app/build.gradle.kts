@@ -19,7 +19,7 @@ android {
     ndkVersion = "27.2.12479018"   // potrzebny tylko do odchudzenia (strip) bibliotek natywnych libsignal
 
     defaultConfig {
-        applicationId = "pl.fourdt.szept"
+        applicationId = "pl.plgpt.szept"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

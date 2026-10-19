@@ -3,7 +3,7 @@ import Security
 
 /// Sekrety konta (token serwera). Tylko to urządzenie – NIE synchronizowane przez iCloud Keychain.
 enum Keychain {
-    static let service = "pl.4dt.szept"
+    static let service = "pl.plgpt.szept"
 
     static func data(_ account: String) -> Data? {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,

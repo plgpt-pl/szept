@@ -4,7 +4,7 @@ import Foundation
 /// Odświeżanie w tle bez APNs: iOS budzi apkę co jakiś czas (wg własnego uznania, zwykle co kilka godzin),
 /// apka odbiera zaległe koperty i pokazuje powiadomienie bez treści. Żadna informacja nie idzie przez Apple.
 enum BackgroundRefresh {
-    static let id = "pl.4dt.szept.refresh"
+    static let id = "pl.plgpt.szept.refresh"
 
     static func register() {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: id, using: nil) { task in
