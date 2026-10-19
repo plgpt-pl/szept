@@ -4,25 +4,32 @@ import PhotosUI
 
 struct ChatView: View {
     @Environment(Engine.self) private var engine
-    @Bindable var contact: Contact
+    let target: ChatTarget
     @State private var draft = ""
     @State private var photo: PhotosPickerItem?
     @State private var showInfo = false
     @State private var preview: UIImage?
 
-    private var messages: [Message] { contact.messages.sorted { $0.sentAt < $1.sentAt } }
+    init(target: ChatTarget) { self.target = target }
+    init(contact: Contact) { self.target = .contact(contact) }
+
+    private var contact: Contact? { if case .contact(let c) = target { return c } else { return nil } }
+    private var group: ChatGroup? { if case .group(let g) = target { return g } else { return nil } }
+    private var messages: [Message] { target.messages.sorted { $0.sentAt < $1.sentAt } }
 
     var body: some View {
         ZStack {
             Sowa.backdrop.ignoresSafeArea()
             VStack(spacing: 0) {
-                if contact.identityChanged { identityBanner }
-                if contact.fromUnknown && !contact.verified { unknownBanner }
+                if let contact, contact.identityChanged { identityBanner }
+                if let contact, contact.fromUnknown && !contact.verified { unknownBanner }
+                if let group, group.members.isEmpty { emptyGroupBanner }
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 6) {
                             ForEach(messages) { m in
-                                Bubble(message: m, onRetry: { Task { await engine.retry(m) } }, onTapImage: { preview = $0 })
+                                Bubble(message: m, senderName: (group != nil && !m.isMine) ? engine.senderName(m.senderId) : nil,
+                                       onRetry: { Task { await engine.retry(m) } }, onTapImage: { preview = $0 })
                                     .id(m.id)
                             }
                         }
@@ -36,32 +43,48 @@ struct ChatView: View {
                 composer
             }
         }
-        .navigationTitle(contact.name)
+        .navigationTitle(target.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("Znikające wiadomości", selection: Binding(get: { contact.disappearAfter },
-                                                                    set: { v in Task { await engine.setDisappear(v, for: contact) } })) {
+                    Picker("Znikające wiadomości", selection: Binding(get: { target.disappearAfter },
+                                                                    set: { v in Task { await engine.setDisappear(v, for: target) } })) {
                         ForEach(Durations.options, id: \.0) { Label($0.1, systemImage: "timer").tag($0.0) }
                     }
-                    Button { showInfo = true } label: { Label("Informacje i weryfikacja", systemImage: "checkmark.seal") }
-                } label: { Image(systemName: contact.disappearAfter > 0 ? "timer" : "ellipsis.circle") }
+                    Button { showInfo = true } label: {
+                        Label(group == nil ? "Informacje i weryfikacja" : "Członkowie i ustawienia", systemImage: group == nil ? "checkmark.seal" : "person.3")
+                    }
+                } label: { Image(systemName: target.disappearAfter > 0 ? "timer" : "ellipsis.circle") }
             }
         }
-        .sheet(isPresented: $showInfo) { NavigationStack { ContactInfoView(contact: contact) } }
+        .sheet(isPresented: $showInfo) {
+            NavigationStack {
+                if let contact { ContactInfoView(contact: contact) }
+                if let group { GroupInfoView(group: group) }
+            }
+        }
         .fullScreenCover(item: $preview) { img in ImagePreview(image: img) }
-        .onAppear { engine.markRead(contact) }
-        .onChange(of: contact.unread) { _, _ in engine.markRead(contact) }
+        .onAppear { engine.markRead(target) }
+        .onChange(of: target.unread) { _, _ in engine.markRead(target) }
         .onChange(of: photo) { _, item in
             guard let item else { return }
             Task {
                 if let d = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: d) {
-                    await engine.sendImage(img, to: contact)
+                    await engine.sendImage(img, to: target)
                 }
                 photo = nil
             }
         }
+    }
+
+    private var emptyGroupBanner: some View {
+        HStack {
+            Image(systemName: "person.3").foregroundStyle(Sowa.cyan)
+            Text("W tej grupie nie ma już nikogo poza Tobą. Dodaj osoby w ustawieniach grupy albo ją opuść.").font(.footnote)
+            Spacer()
+        }
+        .padding(10).background(Sowa.glow)
     }
 
     private var composer: some View {
@@ -77,7 +100,7 @@ struct ChatView: View {
             Button {
                 let t = draft; draft = ""
                 Haptics.light()
-                Task { await engine.sendText(t, to: contact) }
+                Task { await engine.sendText(t, to: target) }
             } label: {
                 Image(systemName: "arrow.up").font(.headline.bold()).foregroundStyle(.white)
                     .frame(width: 38, height: 38).background(Sowa.action, in: Circle())
@@ -113,13 +136,25 @@ struct ChatView: View {
 
 struct Bubble: View {
     let message: Message
+    var senderName: String? = nil        // w grupach: kto napisał
     var onRetry: () -> Void
     var onTapImage: (UIImage) -> Void
 
+    private var isNote: Bool { message.senderId == nil && !message.isMine && message.attachmentW == 0 && message.group != nil }
+
     var body: some View {
+        if isNote || (message.group != nil && message.isMine && message.status == .sent && message.text.hasPrefix("Utworzyłeś")) {
+            Text(message.text).font(.caption).foregroundStyle(Sowa.textMuted).multilineTextAlignment(.center).padding(.vertical, 4).frame(maxWidth: .infinity)
+        } else { bubble }
+    }
+
+    private var bubble: some View {
         HStack {
             if message.isMine { Spacer(minLength: 50) }
             VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
+                if let senderName, !senderName.isEmpty {
+                    Text(senderName).font(.caption.bold()).foregroundStyle(Sowa.cyan).padding(.leading, 4)
+                }
                 if message.attachmentW > 0 {
                     if let f = message.attachmentFile, let img = UIImage(contentsOfFile: Storage.media.appendingPathComponent(f).path) {
                         Image(uiImage: img).resizable().scaledToFit()

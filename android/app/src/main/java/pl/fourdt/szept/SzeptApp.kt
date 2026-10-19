@@ -24,6 +24,7 @@ class SzeptApp : Application() {
         engine = Engine(this)
         Notifications.channels(this)
         engine.onIncoming = { if (!inForeground) Notifications.newMessage(this) }
+        engine.onIncomingGroup = { if (!inForeground) Notifications.newMessage(this) }
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) { inForeground = true; engine.start(); if (engine.registered.value && engine.listenInBackground) ListenService.start(this@SzeptApp) }
             override fun onStop(owner: LifecycleOwner) { inForeground = false; if (!engine.listenInBackground) engine.stop() }

@@ -57,10 +57,10 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 <h2 id="pobierz">Pobierz</h2>
 <div class="grid">
 <div class="card"><h3>Android</h3><p>Plik APK do instalacji bezpośredniej (bez Google Play, bez usług Google). Android 8 lub nowszy.</p>
-<p style="margin-top:10px"><a class="btn" href="/szept.apk">Pobierz szept.apk (0.1.0)</a></p>
-<p style="margin-top:10px;font-size:12px;word-break:break-all">SHA-256: <code>4c02321c930d54115a2799a047a962f58bafabd3f4bb656eaeb23dd8a74939f8</code></p></div>
-<div class="card"><h3>iPhone</h3><p>Wersja testowa przez TestFlight – wkrótce (po aktywacji konta deweloperskiego). Wymaga iOS 17.</p></div>
-<div class="card"><h3>Programiści</h3><p>Serwer to jeden plik Pythona (aiohttp + SQLite), API opisane w <code>szept_server.py</code>. Własny serwer wpisujesz w ustawieniach apki.</p></div>
+<p style="margin-top:10px"><a class="btn" href="/szept.apk">Pobierz szept.apk ({{APK_VERSION}})</a></p>
+<p style="margin-top:10px;font-size:12px;word-break:break-all">SHA-256: <code>{{APK_SHA256}}</code></p></div>
+<div class="card"><h3>iPhone</h3><p>Wersja testowa przez TestFlight. Wymaga iOS 17 i aplikacji TestFlight z App Store.</p><p style="margin-top:10px"><a class="btn" href="https://testflight.apple.com/join/qcFFH5Gp">Dołącz do testów (TestFlight)</a></p></div>
+<div class="card"><h3>Programiści</h3><p>Serwer to jeden plik Pythona (aiohttp + SQLite), apki w Swift i Kotlinie na bibliotece libsignal. Kod na licencji AGPL – publiczne repozytorium wkrótce, do czasu publikacji dostępne na życzenie. Własny serwer wpisujesz w ustawieniach apki.</p></div>
 </div>
 
 <footer>Szept · część zestawu narzędzi PLGPT · libsignal © Signal Messenger LLC (AGPL-3.0)</footer>

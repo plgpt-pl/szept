@@ -208,8 +208,33 @@ def client_key(req: web.Request) -> str:
     return req.headers.get("CF-Connecting-IP") or (req.remote or "?")
 
 
+SECURITY_HEADERS = {
+    # rok HSTS: przeglądarka sama wymusi HTTPS przy kolejnych wejściach
+    "Strict-Transport-Security": "max-age=31536000",
+    "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+}
+
+
+def _is_plain_http(req: web.Request) -> bool:
+    """Za Cloudflare/tunelem: schemat oryginalnego połączenia z CF-Visitor albo X-Forwarded-Proto."""
+    visitor = req.headers.get("CF-Visitor", "")
+    if visitor:
+        return '"scheme":"http"' in visitor.replace(" ", "")
+    proto = req.headers.get("X-Forwarded-Proto")
+    return proto == "http"
+
+
 @web.middleware
 async def guard(req: web.Request, handler):
+    if _is_plain_http(req):
+        # nigdy nie serwujemy strony, APK ani sumy przez zwykły HTTP – ktoś na trasie mógłby je podmienić
+        raise web.HTTPMovedPermanently(location=f"https://{req.host}{req.path_qs}", headers=SECURITY_HEADERS)
     if req.path != "/health":
         q, now = _rate[client_key(req)], time.monotonic()
         while q and now - q[0] > 60:
@@ -218,7 +243,12 @@ async def guard(req: web.Request, handler):
             raise web.HTTPTooManyRequests(text="slow down")
         q.append(now)
     resp = await handler(req)
-    resp.headers["Cache-Control"] = "no-store"
+    try:
+        resp.headers["Cache-Control"] = "no-store"
+        for k, v in SECURITY_HEADERS.items():
+            resp.headers.setdefault(k, v)
+    except Exception:  # noqa: BLE001 – odpowiedź WebSocket już wysłana
+        pass
     return resp
 
 
@@ -419,8 +449,18 @@ async def health(req):
 STATIC = Path(__file__).parent / "static"
 
 
+def _read(name: str, default: str = "") -> str:
+    try:
+        return (STATIC / name).read_text().strip()
+    except OSError:
+        return default
+
+
 async def index(req):
-    return web.FileResponse(STATIC / "index.html")
+    # wersja i suma APK wstawiane z plików obok APK – strona nigdy nie pokazuje nieaktualnej sumy
+    html = (STATIC / "index.html").read_text()
+    html = html.replace("{{APK_VERSION}}", _read("szept.apk.version", "?")).replace("{{APK_SHA256}}", _read("szept.apk.sha256", "brak"))
+    return web.Response(text=html, content_type="text/html", charset="utf-8")
 
 
 async def icon(req):

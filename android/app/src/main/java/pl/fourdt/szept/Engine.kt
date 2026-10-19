@@ -51,6 +51,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     val connection = MutableStateFlow(Connection.OFFLINE)
     val lastError = MutableStateFlow<String?>(null)
     var onIncoming: ((Contact) -> Unit)? = null
+    var onIncomingGroup: ((Group) -> Unit)? = null
     val accountId get() = proto.accountId
     val mediaDir: File get() = File(app.noBackupFilesDir, "media").also { it.mkdirs() }
 
@@ -206,9 +207,15 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     }
 
     suspend fun retry(m: Message) = withContext(Dispatchers.IO) {
-        val c = db.contact(m.contactId) ?: return@withContext
         m.status = Message.PENDING; db.save(m)
         val file = m.attachmentFile?.let { File(mediaDir, it) }
+        if (m.groupId != null) {
+            val g = db.group(m.groupId) ?: return@withContext
+            if (file != null && file.exists()) { db.deleteMessage(m.id); sendImage(BitmapFactory.decodeFile(file.path), g) }
+            else sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = m.text, expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
+            return@withContext
+        }
+        val c = db.contact(m.contactId ?: return@withContext) ?: return@withContext
         if (file != null && file.exists()) { db.deleteMessage(m.id); sendImage(BitmapFactory.decodeFile(file.path), c) }
         else send(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = m.text, expire = c.disappearAfter.takeIf { it > 0 }), c)
     }
@@ -228,6 +235,156 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         try { deliver(MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "receipt", ref = id), c) } catch (_: Exception) {}
     }
 
+    // --- grupy (docs/GRUPY.md: rozsyłanie pairwise, serwer nic nie wie o grupie) ---
+    private fun note(g: Group, text: String, mine: Boolean) =
+        db.save(Message(UUID.randomUUID().toString(), null, text, mine, System.currentTimeMillis(), if (mine) Message.SENT else Message.DELIVERED, groupId = g.id))
+
+    /** Pełny stan grupy do `op: set` – lista członków ŁĄCZNIE ze mną. */
+    private fun setContent(g: Group): MessageContent {
+        val me = Member(accountId ?: throw SzeptException("Najpierw utwórz tożsamość."), proto.identityKey.serialize().b64(), displayName.ifEmpty { null })
+        val others = g.members.mapNotNull { id -> db.contact(id)?.let { Member(it.id, it.identityKey.b64(), it.name) } }
+        return MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "group", g = g.id, gname = g.name, members = others + me, op = "set")
+    }
+
+    /** Wysyłka do każdego członka osobno; true gdy wszystkie doszły. */
+    private fun deliverToGroup(content: MessageContent, g: Group, recipients: List<String> = g.members): Boolean {
+        var ok = true
+        for (id in recipients) {
+            val c = db.contact(id)
+            if (c == null) { ok = false; continue }
+            try { deliver(content, c) } catch (e: Exception) { ok = false; lastError.value = e.message }
+        }
+        return ok
+    }
+
+    private fun sendGroup(m: Message, content: MessageContent, g: Group) {
+        m.status = if (deliverToGroup(content, g)) Message.SENT else Message.FAILED
+        db.save(m)
+    }
+
+    suspend fun createGroup(name: String, members: List<Contact>): Group = withContext(Dispatchers.IO) {
+        val g = Group(UUID.randomUUID().toString().uppercase(), name.trim().ifEmpty { "Grupa" }, members.map { it.id }.distinct())
+        db.save(g)
+        note(g, "Utworzyłeś(aś) grupę „${g.name}”", true)
+        deliverToGroup(setContent(g), g)
+        g
+    }
+
+    suspend fun renameGroup(g: Group, name: String) = withContext(Dispatchers.IO) {
+        val n = name.trim(); if (n.isEmpty() || n == g.name) return@withContext
+        g.name = n; g.lastActivity = System.currentTimeMillis(); db.save(g)
+        note(g, "Zmieniłeś(aś) nazwę grupy na „$n”", true)
+        deliverToGroup(setContent(g), g)
+    }
+
+    suspend fun addMembers(g: Group, contacts: List<Contact>) = withContext(Dispatchers.IO) {
+        val new = contacts.map { it.id }.filter { it !in g.members && it != accountId }.distinct()
+        if (new.isEmpty()) return@withContext
+        g.members = g.members + new; g.lastActivity = System.currentTimeMillis(); db.save(g)
+        note(g, "Dodałeś(aś): " + contacts.filter { it.id in new }.joinToString { it.name }, true)
+        deliverToGroup(setContent(g), g)
+    }
+
+    suspend fun leaveGroup(g: Group) = withContext(Dispatchers.IO) {
+        deliverToGroup(MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "group", g = g.id, op = "leave"), g)
+        db.messagesForGroup(g.id).forEach { removeMedia(it) }
+        db.deleteGroup(g.id)
+    }
+
+    suspend fun sendText(text: String, g: Group) = withContext(Dispatchers.IO) {
+        val t = text.trim(); if (t.isEmpty()) return@withContext
+        val m = Message(UUID.randomUUID().toString(), null, t, true, System.currentTimeMillis(), groupId = g.id)
+        if (g.disappearAfter > 0) m.expiresAt = m.sentAt + g.disappearAfter * 1000L
+        g.lastActivity = m.sentAt; db.save(g); db.save(m)
+        sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = t, expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
+    }
+
+    suspend fun sendImage(bitmap: Bitmap, g: Group) = withContext(Dispatchers.IO) {
+        val (jpeg, w, h) = prepareImage(bitmap)
+        val m = Message(UUID.randomUUID().toString(), null, "", true, System.currentTimeMillis(), attW = w, attH = h, attachmentFile = saveMedia(jpeg), groupId = g.id)
+        if (g.disappearAfter > 0) m.expiresAt = m.sentAt + g.disappearAfter * 1000L
+        g.lastActivity = m.sentAt; db.save(g); db.save(m)
+        try {
+            val (ct, kn) = SzeptProtocol.encryptAttachment(jpeg)
+            val id = api.uploadAttachment(ct)
+            sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "image", att = Attachment(id, kn.first.b64(), kn.second.b64(), ct.size, w, h),
+                expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
+        } catch (e: Exception) { m.status = Message.FAILED; db.save(m); lastError.value = e.message }
+    }
+
+    suspend fun setDisappear(seconds: Int, g: Group) = withContext(Dispatchers.IO) {
+        g.disappearAfter = seconds; db.save(g)
+        note(g, if (seconds > 0) "Znikające wiadomości: ${Durations.label(seconds)}" else "Znikające wiadomości wyłączone", true)
+        deliverToGroup(MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "timer", expire = seconds, g = g.id), g)
+    }
+
+    fun markRead(g: Group) { if (g.unread != 0) { g.unread = 0; db.save(g) } }
+
+    /** Nowi członkowie z `op: set`: nieznani trafiają do kontaktów z kluczem z wiadomości (TOFU); istniejącym klucza NIE ruszamy. */
+    private fun absorbMembers(members: List<Member>) {
+        for (m in members) {
+            if (m.i == accountId || db.contact(m.i) != null) continue
+            val key = try { m.k.unb64().also { IdentityKey(it) } } catch (e: Exception) { continue }
+            val c = Contact(m.i, m.n?.takeIf { it.isNotBlank() } ?: "Kontakt ${m.i.take(6)}", key, fromUnknown = true)
+            try { store.pinIdentity(IdentityKey(key), SzeptProtocol.address(m.i)) } catch (_: Exception) {}
+            db.save(c)
+        }
+    }
+
+    private fun handleGroupContent(content: MessageContent, c: Contact, now: Long) {
+        val gid = content.g ?: return
+        val existing = db.group(gid)
+        when (content.kind) {
+            "group" -> when (content.op) {
+                "set" -> {
+                    val members = content.members ?: return
+                    if (members.none { it.i == c.id }) return                         // nadawca musi być na liście
+                    if (existing != null && c.id !in existing.members) return          // nie-członek nie zmienia znanej grupy
+                    absorbMembers(members)
+                    val others = members.map { it.i }.filter { it != accountId }.distinct()
+                    val g = existing ?: Group(gid, content.gname ?: "Grupa", others)
+                    val wasNew = existing == null
+                    g.members = others; content.gname?.let { g.name = it }; g.lastActivity = now; if (wasNew) g.unread++
+                    db.save(g)
+                    note(g, if (wasNew) "${c.name} dodał(a) Cię do grupy „${g.name}”" else "${c.name} zmienił(a) grupę („${g.name}”, ${others.size + 1} os.)", false)
+                    if (wasNew) onIncomingGroup?.invoke(g)
+                }
+                "leave" -> {
+                    val g = existing ?: return
+                    if (c.id !in g.members) return
+                    g.members = g.members - c.id; g.lastActivity = now; db.save(g)
+                    note(g, "${c.name} opuścił(a) grupę", false)
+                }
+            }
+            "text" -> {
+                val g = existing ?: return; if (c.id !in g.members) return
+                if (db.message(content.id) != null) return
+                val m = Message(content.id, null, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED, groupId = g.id, senderId = c.id)
+                content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
+                db.save(m); g.unread++; g.lastActivity = now; db.save(g)
+                onIncomingGroup?.invoke(g)                                             // bez potwierdzeń odbioru dla grup
+            }
+            "image" -> content.att?.let { att ->
+                val g = existing ?: return; if (c.id !in g.members) return
+                if (db.message(content.id) != null) return
+                val m = Message(content.id, null, "", false, (content.ts * 1000).toLong(), Message.DELIVERED, attW = att.w, attH = att.h, groupId = g.id, senderId = c.id)
+                content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
+                db.save(m); g.unread++; g.lastActivity = now; db.save(g)
+                onIncomingGroup?.invoke(g)
+                scope.launch {
+                    try { m.attachmentFile = saveMedia(SzeptProtocol.decryptAttachment(api.downloadAttachment(att.id), att.key.unb64(), att.nonce.unb64())) }
+                    catch (e: Exception) { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
+                    db.save(m)
+                }
+            }
+            "timer" -> {
+                val g = existing ?: return; if (c.id !in g.members) return
+                g.disappearAfter = content.expire ?: 0; g.lastActivity = now; db.save(g)
+                note(g, if (g.disappearAfter > 0) "${c.name}: znikające wiadomości ${Durations.label(g.disappearAfter)}" else "${c.name} wyłączył(a) znikające wiadomości", false)
+            }
+        }
+    }
+
     // --- odbiór ---
     @Synchronized
     fun handleIncoming(sealed: ByteArray) {
@@ -240,8 +397,9 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         val c = db.contact(opened.sender)?.also { known ->
             if (!known.identityKey.contentEquals(identity)) { known.identityKey = identity; known.identityChanged = true; known.verified = false }
         } ?: Contact(opened.sender, content.name ?: "Nieznany ${opened.sender.take(6)}", identity, fromUnknown = true)
-        if (!content.name.isNullOrEmpty() && c.fromUnknown && c.name.startsWith("Nieznany")) c.name = content.name
+        if (!content.name.isNullOrEmpty() && c.fromUnknown && (c.name.startsWith("Nieznany") || c.name.startsWith("Kontakt "))) c.name = content.name
         val now = System.currentTimeMillis()
+        if (content.g != null) { db.save(c); handleGroupContent(content, c, now); return }
         when (content.kind) {
             "text" -> if (db.message(content.id) == null) {
                 val m = Message(content.id, c.id, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED)

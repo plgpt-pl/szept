@@ -87,6 +87,7 @@ final class Engine {
         UserDefaults.standard.removeObject(forKey: "display_name")
         try? context.delete(model: Message.self)
         try? context.delete(model: Contact.self)
+        try? context.delete(model: ChatGroup.self)
         try? context.save()
         store.destroy()
         Storage.wipeAll()
@@ -251,6 +252,7 @@ final class Engine {
     }
 
     func retry(_ m: Message) async {
+        if let g = m.group { await retryGroup(m, group: g); return }
         guard let c = m.contact else { return }
         m.status = .pending; try? context.save()
         if let f = m.attachmentFile, let data = try? Data(contentsOf: Storage.media.appendingPathComponent(f)), let img = UIImage(data: data) {
@@ -307,6 +309,12 @@ final class Engine {
         }
         if let n = content.name, !n.isEmpty, c.fromUnknown, c.name.hasPrefix("Nieznany") { c.name = n }
 
+        if let gid = content.g {                      // wiadomość grupowa – nie dotyka rozmowy 1:1 z nadawcą
+            handleGroupContent(content, groupId: gid, sender: c)
+            try? context.save()
+            return
+        }
+
         switch content.kind {
         case .text:
             guard contact(id: c.id)?.messages.contains(where: { $0.id == content.id }) != true else { break }
@@ -335,6 +343,8 @@ final class Engine {
             }
         case .receipt:
             if let ref = content.ref, let m = c.messages.first(where: { $0.id == ref }) { m.status = .delivered }
+        case .group:
+            break   // sterowanie grupą bez identyfikatora grupy – ignorujemy
         case .timer:
             c.disappearAfter = content.expire ?? 0
             let note = Message(contact: c, text: (content.expire ?? 0) > 0 ? "\(c.name): znikające wiadomości \(Durations.label(content.expire!))" : "\(c.name) wyłączył(a) znikające wiadomości", isMine: false)
@@ -362,12 +372,14 @@ final class Engine {
 
     // MARK: media / powiadomienia
 
-    private func saveMedia(_ data: Data) -> String? {
+    private func saveMedia(_ data: Data) -> String? { saveMediaFile(data) }
+
+    func saveMediaFile(_ data: Data) -> String? {
         let name = UUID().uuidString + ".jpg"
         return (try? SignalStore.write(data, to: Storage.media.appendingPathComponent(name))) != nil ? name : nil
     }
 
-    private func removeMedia(_ m: Message) {
+    func removeMedia(_ m: Message) {
         if let f = m.attachmentFile { try? FileManager.default.removeItem(at: Storage.media.appendingPathComponent(f)) }
     }
 
@@ -403,5 +415,254 @@ enum ImageTools {
         let out = UIGraphicsImageRenderer(size: size, format: fmt).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         guard let jpeg = out.jpegData(compressionQuality: 0.8) else { return nil }   // bez EXIF/GPS
         return (jpeg, Int(size.width), Int(size.height))
+    }
+}
+
+
+// MARK: - Grupy (rozsyłanie pairwise; docs/GRUPY.md)
+
+/// Cel rozmowy: kontakt 1:1 albo grupa. Pozwala jednemu ekranowi czatu obsłużyć oba.
+enum ChatTarget: Identifiable, Hashable {
+    case contact(Contact), group(ChatGroup)
+    var id: String { switch self { case .contact(let c): return c.id; case .group(let g): return "g:" + g.id } }
+    var name: String { switch self { case .contact(let c): return c.name; case .group(let g): return g.name } }
+    var disappearAfter: Int { switch self { case .contact(let c): return c.disappearAfter; case .group(let g): return g.disappearAfter } }
+    var unread: Int { switch self { case .contact(let c): return c.unread; case .group(let g): return g.unread } }
+    var messages: [Message] { switch self { case .contact(let c): return c.messages; case .group(let g): return g.messages } }
+    var isGroup: Bool { if case .group = self { return true } else { return false } }
+}
+
+extension Engine {
+    func group(id: String) -> ChatGroup? {
+        var d = FetchDescriptor<ChatGroup>(predicate: #Predicate { $0.id == id })
+        d.fetchLimit = 1
+        return try? context.fetch(d).first
+    }
+
+    /// Kontakty członków grupy (pomija id bez kontaktu – nie powinno się zdarzyć, bo `set` zakłada kontakty).
+    func memberContacts(_ g: ChatGroup) -> [Contact] { g.members.compactMap { contact(id: $0) } }
+
+    func senderName(_ id: String?) -> String {
+        guard let id else { return "" }
+        if id == accountId { return "Ty" }
+        return contact(id: id)?.name ?? "Nieznany \(id.prefix(6))"
+    }
+
+    private func groupNote(_ g: ChatGroup, _ text: String, mine: Bool) {
+        let note = Message(group: g, text: text, isMine: mine)
+        note.status = mine ? .sent : .delivered
+        context.insert(note)
+    }
+
+    /// Wysyła treść do każdego członka osobno; rzuca, gdy choć jedna wysyłka padła (nadawca widzi „ponów”).
+    private func deliverGroup(_ content: MessageContent, to g: ChatGroup) async throws {
+        var failures: [String] = []
+        for c in memberContacts(g) {
+            do { try await deliver(content, to: c) } catch { failures.append("\(c.name): \(error.localizedDescription)") }
+        }
+        if !failures.isEmpty { throw SzeptError.server("nie dostarczono do: " + failures.joined(separator: "; ")) }
+    }
+
+    private func groupStateContent(_ g: ChatGroup) -> MessageContent {
+        var members = memberContacts(g).map { MessageContent.Member(i: $0.id, k: $0.identityKey.base64EncodedString(), n: $0.name) }
+        if let me = accountId {
+            members.append(MessageContent.Member(i: me, k: proto.identityKeyBase64, n: displayName.isEmpty ? nil : displayName))
+        }
+        return MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: .group, g: g.id, gname: g.name, members: members, op: "set")
+    }
+
+    /// Rozsyła pełny stan grupy (nazwa + członkowie) do wszystkich członków.
+    func sendGroupState(_ g: ChatGroup) async {
+        do { try await deliverGroup(groupStateContent(g), to: g) } catch { lastError = error.localizedDescription }
+    }
+
+    @discardableResult
+    func createGroup(name: String, members: [Contact]) async -> ChatGroup {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let g = ChatGroup(id: UUID().uuidString.uppercased(), name: trimmed.isEmpty ? "Grupa" : trimmed, members: members.map(\.id))
+        context.insert(g)
+        groupNote(g, "Utworzyłeś(aś) grupę z: " + members.map(\.name).joined(separator: ", "), mine: true)
+        try? context.save()
+        await sendGroupState(g)
+        return g
+    }
+
+    func renameGroup(_ g: ChatGroup, to name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != g.name else { return }
+        g.name = trimmed; g.lastActivity = Date()
+        groupNote(g, "Zmieniłeś(aś) nazwę grupy na „\(trimmed)”", mine: true)
+        try? context.save()
+        await sendGroupState(g)
+    }
+
+    func addMembers(_ contacts: [Contact], to g: ChatGroup) async {
+        let new = contacts.filter { !g.members.contains($0.id) }
+        guard !new.isEmpty else { return }
+        g.members.append(contentsOf: new.map(\.id)); g.lastActivity = Date()
+        groupNote(g, "Dodałeś(aś): " + new.map(\.name).joined(separator: ", "), mine: true)
+        try? context.save()
+        await sendGroupState(g)
+    }
+
+    /// Wychodzi z grupy: informuje członków i usuwa grupę lokalnie.
+    func leaveGroup(_ g: ChatGroup) async {
+        let content = MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: .group, g: g.id, op: "leave")
+        try? await deliverGroup(content, to: g)
+        deleteGroupLocally(g)
+    }
+
+    func deleteGroupLocally(_ g: ChatGroup) {
+        for m in g.messages { removeMedia(m) }
+        context.delete(g)
+        try? context.save()
+    }
+
+    func markRead(_ g: ChatGroup) { if g.unread != 0 { g.unread = 0; try? context.save() } }
+
+    func markRead(_ t: ChatTarget) { switch t { case .contact(let c): markRead(c); case .group(let g): markRead(g) } }
+
+    // MARK: wysyłanie do grupy
+
+    func sendText(_ text: String, to g: ChatGroup) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let m = Message(group: g, text: trimmed, isMine: true)
+        if g.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(g.disappearAfter)) }
+        g.lastActivity = Date()
+        context.insert(m); try? context.save()
+        await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: trimmed,
+                                                      expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
+    }
+
+    func sendImage(_ image: UIImage, to g: ChatGroup) async {
+        guard let (jpeg, w, h) = ImageTools.prepare(image) else { return }
+        let m = Message(group: g, text: "", isMine: true)
+        m.attachmentW = w; m.attachmentH = h
+        m.attachmentFile = saveMediaFile(jpeg)
+        if g.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(g.disappearAfter)) }
+        g.lastActivity = Date()
+        context.insert(m); try? context.save()
+        do {
+            let (ct, key) = try SzeptProtocol.encryptAttachment(jpeg)
+            let id = try await api.uploadAttachment(ct)
+            let att = MessageContent.Attachment(id: id, key: key.key, nonce: key.nonce, size: ct.count, w: w, h: h)
+            await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .image, att: att,
+                                                          expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
+        } catch {
+            m.status = .failed; lastError = error.localizedDescription; try? context.save()
+        }
+    }
+
+    func sendText(_ text: String, to t: ChatTarget) async {
+        switch t { case .contact(let c): await sendText(text, to: c); case .group(let g): await sendText(text, to: g) }
+    }
+
+    func sendImage(_ image: UIImage, to t: ChatTarget) async {
+        switch t { case .contact(let c): await sendImage(image, to: c); case .group(let g): await sendImage(image, to: g) }
+    }
+
+    func setDisappear(_ seconds: Int, for t: ChatTarget) async {
+        switch t { case .contact(let c): await setDisappear(seconds, for: c); case .group(let g): await setDisappear(seconds, for: g) }
+    }
+
+    fileprivate func retryGroup(_ m: Message, group g: ChatGroup) async {
+        m.status = .pending; try? context.save()
+        if let f = m.attachmentFile, let data = try? Data(contentsOf: Storage.media.appendingPathComponent(f)), let img = UIImage(data: data) {
+            context.delete(m); try? context.save()
+            await sendImage(img, to: g)
+        } else {
+            await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: m.text,
+                                                          expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
+        }
+    }
+
+    private func sendGroup(message m: Message, content: MessageContent, to g: ChatGroup) async {
+        do { try await deliverGroup(content, to: g); m.status = .sent }
+        catch { m.status = .failed; lastError = error.localizedDescription }
+        try? context.save()
+    }
+
+    func setDisappear(_ seconds: Int, for g: ChatGroup) async {
+        g.disappearAfter = seconds
+        groupNote(g, seconds > 0 ? "Znikające wiadomości: \(Durations.label(seconds))" : "Znikające wiadomości wyłączone", mine: true)
+        try? context.save()
+        try? await deliverGroup(MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: .timer, expire: seconds, g: g.id), to: g)
+    }
+
+    // MARK: odbiór wiadomości grupowych
+
+    /// Zakłada kontakt dla członka z wiadomości `set` (TOFU: klucz z wiadomości). Istniejącego kontaktu i jego klucza nie rusza.
+    private func ensureMemberContact(_ m: MessageContent.Member) -> Contact? {
+        if let existing = contact(id: m.i) { return existing }
+        guard let key = Data(base64Encoded: m.k), (try? IdentityKey(bytes: key)) != nil else { return nil }
+        let c = Contact(id: m.i, name: (m.n?.isEmpty == false ? m.n! : "Kontakt \(m.i.prefix(6))"), identityKey: key)
+        c.fromUnknown = true
+        context.insert(c)
+        try? store.pinIdentity(try IdentityKey(bytes: key), for: try SzeptProtocol.address(m.i))
+        return c
+    }
+
+    fileprivate func handleGroupContent(_ content: MessageContent, groupId: String, sender c: Contact) {
+        let existing = group(id: groupId)
+        switch content.kind {
+        case .group where content.op == "set":
+            guard let list = content.members, list.contains(where: { $0.i == c.id }) else { return }
+            let others = list.filter { $0.i != accountId }
+            let ids = others.compactMap { ensureMemberContact($0)?.id }
+            let name = (content.gname?.isEmpty == false) ? content.gname! : "Grupa"
+            if let g = existing {
+                guard g.members.contains(c.id) else { return }        // nie-członek nie steruje grupą
+                let added = Set(ids).subtracting(g.members), removed = Set(g.members).subtracting(ids)
+                var notes: [String] = []
+                if g.name != name { notes.append("zmienił(a) nazwę na „\(name)”"); g.name = name }
+                if !added.isEmpty { notes.append("dodał(a): " + added.map { senderName($0) }.joined(separator: ", ")) }
+                if !removed.isEmpty { notes.append("usunął(ęła): " + removed.map { senderName($0) }.joined(separator: ", ")) }
+                g.members = ids
+                if !notes.isEmpty { groupNote(g, "\(c.name) " + notes.joined(separator: "; "), mine: false); g.lastActivity = Date() }
+            } else {
+                let g = ChatGroup(id: groupId, name: name, members: ids)
+                context.insert(g)
+                groupNote(g, "\(c.name) dodał(a) Cię do grupy", mine: false)
+                g.unread = 1
+                notifyLocally()
+            }
+        case .group where content.op == "leave":
+            guard let g = existing, g.members.contains(c.id) else { return }
+            g.members.removeAll { $0 == c.id }
+            groupNote(g, "\(c.name) opuścił(a) grupę", mine: false)
+            g.lastActivity = Date()
+        case .group:
+            break
+        case .text:
+            guard let g = existing, g.members.contains(c.id), !g.messages.contains(where: { $0.id == content.id }) else { return }
+            let m = Message(id: content.id, group: g, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
+            m.senderId = c.id; m.status = .delivered
+            if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
+            context.insert(m)
+            g.unread += 1; g.lastActivity = Date()
+            notifyLocally()
+        case .image:
+            guard let g = existing, g.members.contains(c.id), let att = content.att, !g.messages.contains(where: { $0.id == content.id }) else { return }
+            let m = Message(id: content.id, group: g, text: "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
+            m.senderId = c.id; m.status = .delivered; m.attachmentW = att.w; m.attachmentH = att.h
+            if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
+            context.insert(m)
+            g.unread += 1; g.lastActivity = Date()
+            notifyLocally()
+            Task {
+                if let ct = try? await api.downloadAttachment(att.id),
+                   let plain = try? SzeptProtocol.decryptAttachment(ct, key: .init(key: att.key, nonce: att.nonce)) {
+                    m.attachmentFile = saveMediaFile(plain)
+                } else { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
+                try? context.save()
+            }
+        case .timer:
+            guard let g = existing, g.members.contains(c.id) else { return }
+            g.disappearAfter = content.expire ?? 0
+            groupNote(g, g.disappearAfter > 0 ? "\(c.name): znikające wiadomości \(Durations.label(g.disappearAfter))" : "\(c.name) wyłączył(a) znikające wiadomości", mine: false)
+        case .receipt:
+            break   // dla grup nie ma potwierdzeń odbioru
+        }
     }
 }

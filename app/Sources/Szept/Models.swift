@@ -20,12 +20,32 @@ final class Contact {
     }
 }
 
+/// Grupa istnieje tylko w telefonach członków (serwer nic o niej nie wie) – docs/GRUPY.md.
+@Model
+final class ChatGroup {
+    @Attribute(.unique) var id: String              // UUID nadany przez założyciela
+    var name: String
+    var members: [String] = []                       // account_id pozostałych członków (bez mnie)
+    var createdAt: Date = Date()
+    var lastActivity: Date = Date()
+    var unread: Int = 0
+    var disappearAfter: Int = 0
+    var left: Bool = false
+    @Relationship(deleteRule: .cascade, inverse: \Message.group) var messages: [Message] = []
+
+    init(id: String = UUID().uuidString, name: String, members: [String]) {
+        self.id = id; self.name = name; self.members = members
+    }
+}
+
 @Model
 final class Message {
     enum Status: Int { case pending = 0, sent = 1, delivered = 2, failed = 3 }
 
     @Attribute(.unique) var id: String
     var contact: Contact?
+    var group: ChatGroup?
+    var senderId: String?                        // nadawca cudzej wiadomości grupowej
     var text: String
     var isMine: Bool
     var sentAt: Date
@@ -37,8 +57,8 @@ final class Message {
 
     var status: Status { get { Status(rawValue: statusRaw) ?? .pending } set { statusRaw = newValue.rawValue } }
 
-    init(id: String = UUID().uuidString, contact: Contact, text: String, isMine: Bool, sentAt: Date = Date()) {
-        self.id = id; self.contact = contact; self.text = text; self.isMine = isMine; self.sentAt = sentAt
+    init(id: String = UUID().uuidString, contact: Contact? = nil, group: ChatGroup? = nil, text: String, isMine: Bool, sentAt: Date = Date()) {
+        self.id = id; self.contact = contact; self.group = group; self.text = text; self.isMine = isMine; self.sentAt = sentAt
     }
 }
 
@@ -62,7 +82,7 @@ enum Storage {
     }
 
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
-        let schema = Schema([Contact.self, Message.self])
+        let schema = Schema([Contact.self, Message.self, ChatGroup.self])
         let cfg = inMemory
             ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
             : ModelConfiguration(schema: schema, url: root.appendingPathComponent("szept.store"), cloudKitDatabase: .none)

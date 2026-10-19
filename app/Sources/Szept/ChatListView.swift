@@ -4,13 +4,26 @@ import SwiftData
 struct ChatListView: View {
     @Environment(Engine.self) private var engine
     @Query(sort: \Contact.lastActivity, order: .reverse) private var contacts: [Contact]
+    @Query(sort: \ChatGroup.lastActivity, order: .reverse) private var groups: [ChatGroup]
     @State private var showAdd = false
+    @State private var showNewGroup = false
     @State private var showSettings = false
+    @State private var leaving: ChatGroup?
+
+    /// Wiersze listy: kontakty i grupy razem, po ostatniej aktywności.
+    private var rows: [ChatTarget] {
+        (contacts.map { ChatTarget.contact($0) } + groups.map { ChatTarget.group($0) })
+            .sorted { a, b in
+                let la: Date = { if case .contact(let c) = a { return c.lastActivity } else if case .group(let g) = a { return g.lastActivity }; return .distantPast }()
+                let lb: Date = { if case .contact(let c) = b { return c.lastActivity } else if case .group(let g) = b { return g.lastActivity }; return .distantPast }()
+                return la > lb
+            }
+    }
 
     var body: some View {
         ZStack {
             Sowa.backdrop.ignoresSafeArea()
-            if contacts.isEmpty {
+            if contacts.isEmpty && groups.isEmpty {
                 VStack(spacing: 16) {
                     SzeptLogo(size: 90)
                     Text("Nikogo tu jeszcze nie ma").font(.title3.weight(.semibold))
@@ -21,15 +34,31 @@ struct ChatListView: View {
                 }
             } else {
                 List {
-                    ForEach(contacts) { c in
-                        NavigationLink(value: c.id) { ContactRow(contact: c) }
-                            .listRowBackground(Sowa.card)
+                    ForEach(rows) { row in
+                        NavigationLink(value: row.id) {
+                            switch row {
+                            case .contact(let c): ContactRow(contact: c)
+                            case .group(let g): GroupRow(group: g)
+                            }
+                        }
+                        .listRowBackground(Sowa.card)
                     }
-                    .onDelete { idx in idx.map { contacts[$0] }.forEach(engine.delete) }
+                    .onDelete { idx in
+                        for row in idx.map({ rows[$0] }) {
+                            switch row {
+                            case .contact(let c): engine.delete(c)
+                            case .group(let g): leaving = g
+                            }
+                        }
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 .navigationDestination(for: String.self) { id in
-                    if let c = engine.contact(id: id) { ChatView(contact: c) }
+                    if id.hasPrefix("g:"), let g = engine.group(id: String(id.dropFirst(2))) { ChatView(target: .group(g)) }
+                    else if let c = engine.contact(id: id) { ChatView(target: .contact(c)) }
+                }
+                .confirmationDialog("Opuścić grupę „\(leaving?.name ?? "")”?", isPresented: Binding(get: { leaving != nil }, set: { if !$0 { leaving = nil } }), titleVisibility: .visible) {
+                    Button("Opuść", role: .destructive) { if let g = leaving { Task { await engine.leaveGroup(g) } }; leaving = nil }
                 }
             }
         }
@@ -40,10 +69,15 @@ struct ChatListView: View {
             }
             ToolbarItem(placement: .principal) { ConnectionDot() }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showAdd = true } label: { Image(systemName: "plus.circle.fill") }
+                Menu {
+                    Button { showAdd = true } label: { Label("Dodaj kontakt", systemImage: "qrcode") }
+                    Button { showNewGroup = true } label: { Label("Nowa grupa", systemImage: "person.3") }
+                        .disabled(contacts.isEmpty)
+                } label: { Image(systemName: "plus.circle.fill") }
             }
         }
         .sheet(isPresented: $showAdd) { NavigationStack { AddContactView() } }
+        .sheet(isPresented: $showNewGroup) { NavigationStack { NewGroupView() } }
         .sheet(isPresented: $showSettings) { NavigationStack { SettingsView() } }
     }
 }

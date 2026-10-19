@@ -45,8 +45,12 @@ val json = Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefault
 @Serializable data class Envelope(@EncodeDefault val v: Int = 1, val t: Int, val s: String, val c: String)
 
 @Serializable data class Attachment(val id: String, val key: String, val nonce: String, val size: Int, val w: Int, val h: Int)
+/** Członek grupy w wiadomości sterującej (`kind: group`, `op: set`): id konta, klucz tożsamości (base64), nazwa. */
+@Serializable data class Member(val i: String, val k: String, val n: String? = null)
+/** Treść po odszyfrowaniu – JSON 1:1 z iOS. Pola grupowe (`g`, `gname`, `members`, `op`) wg docs/GRUPY.md. */
 @Serializable data class MessageContent(val id: String, val ts: Double, val kind: String, val text: String? = null, val att: Attachment? = null,
-                                        val expire: Int? = null, val ref: String? = null, val name: String? = null)
+                                        val expire: Int? = null, val ref: String? = null, val name: String? = null,
+                                        val g: String? = null, val gname: String? = null, val members: List<Member>? = null, val op: String? = null)
 
 class SzeptException(message: String) : Exception(message)
 

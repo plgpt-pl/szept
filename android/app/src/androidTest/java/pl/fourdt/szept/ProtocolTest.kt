@@ -89,4 +89,60 @@ class ProtocolTest {
         val c = bob.api.keyCounts(); assertEquals(SzeptProtocol.PREKEY_BATCH - 1, c.prekeys); assertEquals(SzeptProtocol.PREKEY_BATCH - 1, c.kyber_prekeys)
         alice.api.deleteAccount(); bob.api.deleteAccount()
     }
+
+    /** Pola grupowe w JSON: nazwy 1:1 z iOS, brak pól gdy null (docs/GRUPY.md). */
+    @Test fun groupContentJson() {
+        val c = MessageContent("ID1", 1.5, "group", g = "G-1", gname = "Ekipa", op = "set",
+            members = listOf(Member("A", "a2V5QQ==", "Ala"), Member("B", "a2V5Qg==")))
+        val js = json.encodeToString(MessageContent.serializer(), c)
+        assertTrue(js.contains("\"g\":\"G-1\"")); assertTrue(js.contains("\"gname\":\"Ekipa\"")); assertTrue(js.contains("\"op\":\"set\""))
+        assertTrue(js.contains("\"members\":[{\"i\":\"A\",\"k\":\"a2V5QQ==\",\"n\":\"Ala\"},{\"i\":\"B\",\"k\":\"a2V5Qg==\"}]"))
+        assertEquals(c, json.decodeFromString(MessageContent.serializer(), js))
+        val plain = json.encodeToString(MessageContent.serializer(), MessageContent("ID2", 2.0, "text", text = "hej"))
+        assertFalse(plain.contains("\"g\"")); assertFalse(plain.contains("members")); assertFalse(plain.contains("\"op\""))
+        // JSON tak, jak wysyła go iOS (inna kolejność pól, nieznane pole)
+        val fromIos = json.decodeFromString(MessageContent.serializer(), """{"kind":"text","id":"X","ts":3,"text":"grupowa","g":"G-1","przyszle":1}""")
+        assertEquals("G-1", fromIos.g); assertEquals("grupowa", fromIos.text); assertNull(fromIos.members)
+    }
+
+    /** Trzy „telefony” i grupa przez prawdziwy serwer (rozsyłanie pairwise). Pomijany, gdy serwer nie działa. */
+    @Test fun threePhonesGroupThroughServer() = runBlocking {
+        val server = System.getProperty("szept.server") ?: InstrumentationRegistry.getArguments().getString("server") ?: "http://10.0.2.2:11437"
+        val probe = SzeptApi(server, null)
+        assumeTrue("serwer niedostępny", try { probe.health() } catch (e: Exception) { false })
+        val id = UUID.randomUUID().toString().take(8)
+        fun eng(n: String) = Engine(ctx, tmp("k$n"), prefsName = "t-$n-$id", dbName = "t-$n-$id.db").also { it.db.wipe(); it.serverUrl = server }
+        val a = eng("a"); val b = eng("b"); val c = eng("c")
+        a.displayName = "Ala"; b.displayName = "Bartek"; c.displayName = "Celina"
+        a.register(); b.register(); c.register(); a.stop(); b.stop(); c.stop()
+        val bAtA = a.addContact(b.myLink!!, "Bartek"); val cAtA = a.addContact(c.myLink!!, "Celina")
+        // B i C nie znają się nawzajem – poznają się przez `set` od A (TOFU z kluczem w wiadomości)
+        val g = a.createGroup("Ekipa", listOf(bAtA, cAtA))
+        assertEquals(setOf(b.accountId, c.accountId), g.members.toSet())
+        a.sendText("Cześć ekipo", g)
+        assertEquals(Message.SENT, a.db.messagesForGroup(g.id).first { it.isMine && it.text == "Cześć ekipo" }.status)
+        b.drainPending(); c.drainPending()
+        for (e in listOf(b, c)) {
+            val gg = e.db.group(g.id); assertNotNull("grupa nie dotarła", gg); gg!!
+            assertEquals("Ekipa", gg.name)
+            assertEquals((setOf(a.accountId, b.accountId, c.accountId) - e.accountId!!), gg.members.toSet())
+            val m = e.db.messagesForGroup(g.id).first { it.senderId != null }
+            assertEquals("Cześć ekipo", m.text); assertEquals(a.accountId, m.senderId); assertNull(m.contactId)
+            assertTrue(e.db.messages(a.accountId!!).isEmpty())                       // nie wpadła do rozmowy 1:1
+            assertEquals("Ala", e.db.contact(a.accountId!!)!!.name)
+            assertTrue(e.db.contact(if (e === b) c.accountId!! else b.accountId!!)!!.fromUnknown)
+        }
+        c.sendText("Hej!", c.db.group(g.id)!!)
+        Thread.sleep(700); a.drainPending(); b.drainPending()
+        assertEquals(c.accountId, a.db.messagesForGroup(g.id).first { it.text == "Hej!" }.senderId)
+        assertEquals(c.accountId, b.db.messagesForGroup(g.id).first { it.text == "Hej!" }.senderId)
+        assertEquals(Message.SENT, a.db.messagesForGroup(g.id).first { it.isMine && it.text == "Cześć ekipo" }.status)  // brak potwierdzeń w grupach
+        b.leaveGroup(b.db.group(g.id)!!)
+        assertNull(b.db.group(g.id))
+        Thread.sleep(700); a.drainPending(); c.drainPending()
+        assertEquals(listOf(c.accountId), a.db.group(g.id)!!.members)
+        assertEquals(listOf(a.accountId), c.db.group(g.id)!!.members)
+        assertTrue(a.db.messagesForGroup(g.id).any { it.text.contains("opuścił") })
+        a.api.deleteAccount(); b.api.deleteAccount(); c.api.deleteAccount()
+    }
 }

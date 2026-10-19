@@ -106,3 +106,18 @@ async def test_no_pii_in_database(cli, tmp_path):
         assert forbidden not in flat.split()
     (tok,) = db.execute("SELECT token_hash FROM accounts").fetchone()
     assert tok not in h["Authorization"]  # w bazie tylko hash tokenu
+
+
+async def test_https_redirect_and_security_headers(cli):
+    r = await cli.get("/", headers={"CF-Visitor": '{"scheme":"http"}'}, allow_redirects=False)
+    assert r.status == 301 and r.headers["Location"].startswith("https://")
+    r = await cli.get("/szept.apk.sha256", headers={"X-Forwarded-Proto": "http"}, allow_redirects=False)
+    assert r.status == 301
+    r = await cli.get("/", headers={"CF-Visitor": '{"scheme":"https"}'})
+    assert r.status == 200
+    for h in ("Strict-Transport-Security", "Content-Security-Policy", "X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
+        assert h in r.headers, h
+    assert "frame-ancestors 'none'" in r.headers["Content-Security-Policy"]
+    assert r.headers["Cache-Control"] == "no-store"
+    body = await r.text()
+    assert "{{APK_" not in body, "placeholdery wersji/sumy APK podstawione"

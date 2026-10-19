@@ -239,8 +239,10 @@ final class SzeptProtocol {
 // MARK: - Treść wiadomości (po odszyfrowaniu)
 
 struct MessageContent: Codable {
-    enum Kind: String, Codable { case text, image, receipt, timer }
+    enum Kind: String, Codable { case text, image, receipt, timer, group }
     struct Attachment: Codable { var id: String; var key: Data; var nonce: Data; var size: Int; var w: Int; var h: Int }
+    /// Członek grupy w wiadomości sterującej: id konta, klucz tożsamości (base64), nazwa.
+    struct Member: Codable, Equatable { var i: String; var k: String; var n: String? }
     var id: String
     var ts: Double
     var kind: Kind
@@ -249,6 +251,11 @@ struct MessageContent: Codable {
     var expire: Int?       // sekundy do zniknięcia (0/nil = nie znika)
     var ref: String?       // id wiadomości, której dotyczy potwierdzenie
     var name: String?      // opcjonalna nazwa nadawcy (ustawiana w apce)
+    // grupy (docs/GRUPY.md)
+    var g: String?         // id grupy – w każdej wiadomości dotyczącej grupy
+    var gname: String?     // nazwa grupy (kind: group, op: set)
+    var members: [Member]? // pełna lista członków łącznie z nadawcą (kind: group, op: set)
+    var op: String?        // "set" | "leave" (kind: group)
 }
 
 // MARK: - Link / kod QR kontaktu
