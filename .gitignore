@@ -13,3 +13,6 @@ __pycache__/
 vendor/build/
 app/.build-device/
 app/Info.plist
+app/.build-archive/
+app/.build-device-rel/
+app/.build-*/

@@ -10,7 +10,7 @@
 | M06 Instalacja na iPhone | build-install.sh | ✅ 19.10 – Apple Developer Program aktywny (team R8M2B5S4G3 bez zmian), profil roczny do 2027-10-19, apka uruchomiona na iPhonie Adama |
 | M07 Powiadomienia | iOS: BGAppRefresh (bez APNs) ✅ 0.1.1; opcja pustego pusha APNs do decyzji. Android: własny kanał WS w usłudze pierwszoplanowej ✅ | częściowo |
 | M08 Android | Kotlin/Compose, libsignal-android 0.105.1, ten sam serwer; parytet funkcji z iOS; usługa nasłuchu bez Google; APK release podpisany | ✅ 3 testy + interop z iOS przez serwer |
-| M09 Grupy | Sender Keys (libsignal groupEncrypt/groupDecrypt), dystrybucja kluczy w kopertach 1:1 | do zrobienia |
+| M09 Grupy (ZROBIONE 19.10 – docs/GRUPY.md, rozsyłanie pairwise, iOS+Android 0.2.0, testy 3 telefonów na obu platformach) | Sender Keys (libsignal groupEncrypt/groupDecrypt), dystrybucja kluczy w kopertach 1:1 | do zrobienia |
 | M10 Publikacja | strona szept.plgpt.pl ✅ + APK do pobrania z SHA-256 ✅; TestFlight (po Apple Developer); repo publiczne na AGPL | częściowo |
 | M11 Metadane | tryb Tor (klient przez onion), rotacja signed prekey co 7 dni, padding długości kopert | pomysły |
 
@@ -32,3 +32,9 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 - Wysyłka: `xcodebuild archive` (Release, `-derivedDataPath .build-archive`) → `xcodebuild -exportArchive -exportOptionsPlist ExportOptions.plist` z `-authenticationKey*`. Pierwszy build 0.1.1 (1) wysłany 18:48.
 - Do zrobienia: deklaracja eksportowa (szyfrowanie nieobjęte wyjątkiem, libsignal), grupa zewnętrzna (Ola i inni – wymaga Beta App Review + kontaktu z telefonem), weryfikacja DSA (dokument CEIDG) przed publikacją w App Store.
 - 19.10 ~19:05: deklaracja szyfrowania (standardowe algorytmy, bez Francji) zrobiona ręcznie w ASC; build 0.1.1 (1) w testach wewnętrznych, grupa zewnętrzna „Znajomi” (link publiczny https://testflight.apple.com/join/qcFFH5Gp, limit 200, tester mlodykawa@gmail.com), wysłany do Beta App Review (WAITING_FOR_REVIEW). Kontakt review uzupełniony (telefon Adama).
+
+## 0.2.0 (19.10.2026 wieczór)
+- **Grupy** (docs/GRUPY.md): rozsyłanie pairwise, serwer nic nie wie o grupach. iOS: `ChatGroup` (SwiftData), `ChatTarget`, `GroupViews.swift`, test `GroupTests` (3 telefony + obcy odrzucony + wyjście). Android: tabela `groups`, `ChatBody` wspólny dla 1:1 i grup, test `threePhonesGroupThroughServer` (5/5 na emulatorze). Brak potwierdzeń odbioru w grupach. Następny krok przy dużych grupach: Sender Keys.
+- **Crash 0.1.1 na starcie** przy włączonej blokadzie Face ID (LockScreen w `.overlay` przed `.environment`) – naprawiony w 0.1.2; build 1 wycofany z TestFlight.
+- **Serwer**: 301 HTTP→HTTPS (CF-Visitor / X-Forwarded-Proto), HSTS, CSP, nosniff, DENY, Referrer-Policy; strona czyta wersję i SHA-256 APK z plików `szept.apk.version` / `szept.apk.sha256` (`tools/publish-apk.sh`); link TestFlight na stronie. Uwagi z zewnętrznego przeglądu strony (brak przekierowania, HSTS, nagłówków) – ZAŁATWIONE; brak publicznego repozytorium – OTWARTE (decyzja usera gdzie publikować, AGPL).
+- **TestFlight**: deklaracja szyfrowania NIE przenosi się między buildami i API nie obsługuje wariantu „standardowe algorytmy, bez Francji” (brak zasobu `appEncryptionDeclarations` po odpowiedzi w UI) → przy każdym buildzie 4 kliknięcia usera w ASC (albo automatyzacja Chrome). Do sprawdzenia: `ITSEncryptionExportComplianceCode`.
