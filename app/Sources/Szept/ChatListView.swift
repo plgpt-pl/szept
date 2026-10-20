@@ -94,7 +94,7 @@ struct ConnectionDot: View {
         switch engine.connection { case .online: return Sowa.ok; case .connecting: return Sowa.warn; case .offline: return .gray }
     }
     private var label: String {
-        switch engine.connection { case .online: return "połączono"; case .connecting: return "łączenie…"; case .offline: return "offline" }
+        switch engine.connection { case .online: return String(localized: "połączono"); case .connecting: return String(localized: "łączenie…"); case .offline: return String(localized: "offline") }
     }
 }
 
@@ -125,8 +125,8 @@ struct ContactRow: View {
         .padding(.vertical, 4)
     }
     private var preview: String {
-        guard let last = contact.messages.max(by: { $0.sentAt < $1.sentAt }) else { return "Brak wiadomości" }
-        return (last.isMine ? "Ty: " : "") + last.summary
+        guard let last = contact.messages.max(by: { $0.sentAt < $1.sentAt }) else { return String(localized: "Brak wiadomości") }
+        return (last.isMine ? String(localized: "Ty: ") : "") + last.summary
     }
 }
 

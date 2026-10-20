@@ -72,7 +72,7 @@ struct ChatView: View {
                         ForEach(Durations.options, id: \.0) { Label($0.1, systemImage: "timer").tag($0.0) }
                     }
                     Button { showInfo = true } label: {
-                        Label(group == nil ? "Informacje i weryfikacja" : "Członkowie i ustawienia", systemImage: group == nil ? "checkmark.seal" : "person.3")
+                        Label(group == nil ? String(localized: "Informacje i weryfikacja") : String(localized: "Członkowie i ustawienia"), systemImage: group == nil ? "checkmark.seal" : "person.3")
                     }
                 } label: { Image(systemName: target.disappearAfter > 0 ? "timer" : "ellipsis.circle") }
             }
@@ -120,7 +120,7 @@ struct ChatView: View {
     }
 
     private func quotedName(_ m: Message) -> String {
-        if m.isMine { return "Ty" }
+        if m.isMine { return String(localized: "Ty") }
         if group != nil { return engine.senderName(m.senderId) }
         return contact?.name ?? ""
     }
@@ -144,8 +144,8 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
-            if let r = replyTo { composerBar(icon: "arrowshape.turn.up.left", title: "Odpowiedź do: \(quotedName(r))", text: r.summary) { replyTo = nil } }
-            if let e = editing { composerBar(icon: "pencil", title: "Edycja wiadomości", text: e.text) { editing = nil; draft = "" } }
+            if let r = replyTo { composerBar(icon: "arrowshape.turn.up.left", title: String(localized: "Odpowiedź do: \(quotedName(r))"), text: r.summary) { replyTo = nil } }
+            if let e = editing { composerBar(icon: "pencil", title: String(localized: "Edycja wiadomości"), text: e.text) { editing = nil; draft = "" } }
             HStack(alignment: .bottom, spacing: 10) {
                 if recorder.isRecording {
                     recordingView
@@ -154,7 +154,7 @@ struct ChatView: View {
                         Image(systemName: "paperclip").font(.title2).foregroundStyle(Sowa.cyan).padding(.bottom, 8)
                     }
                     .disabled(editing != nil)
-                    TextField(editing == nil ? "Szepnij coś…" : "Nowa treść…", text: $draft, axis: .vertical)
+                    TextField(editing == nil ? String(localized: "Szepnij coś…") : String(localized: "Nowa treść…"), text: $draft, axis: .vertical)
                         .lineLimit(1...6)
                         .focused($focused)
                         .padding(.horizontal, 14).padding(.vertical, 9)
@@ -199,7 +199,7 @@ struct ChatView: View {
         HStack(spacing: 10) {
             Circle().fill(Color.red).frame(width: 10, height: 10)
             Text(Durations.clock(recorder.elapsed)).font(.body.monospacedDigit())
-            Text(recorder.cancelling ? "Puść, żeby anulować" : "◀︎ przesuń, by anulować").font(.footnote).foregroundStyle(recorder.cancelling ? Sowa.warn : Sowa.textMuted)
+            Text(recorder.cancelling ? String(localized: "Puść, żeby anulować") : String(localized: "◀︎ przesuń, by anulować")).font(.footnote).foregroundStyle(recorder.cancelling ? Sowa.warn : Sowa.textMuted)
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 9)
@@ -294,7 +294,7 @@ struct Bubble: View {
     private var isNote: Bool { message.senderId == nil && !message.isMine && !message.hasAttachment && !message.wasDeleted && message.group != nil }
 
     var body: some View {
-        if isNote || (message.group != nil && message.isMine && message.status == .sent && message.text.hasPrefix("Utworzyłeś")) {
+        if isNote || (message.group != nil && message.isMine && message.status == .sent && message.text.hasPrefix(String(localized: "Utworzyłeś(aś)")) || message.text.hasPrefix("Utworzyłeś(aś)")) {
             Text(message.text).font(.caption).foregroundStyle(Sowa.textMuted).multilineTextAlignment(.center).padding(.vertical, 4).frame(maxWidth: .infinity)
         } else { bubble }
     }
@@ -366,7 +366,7 @@ struct Bubble: View {
         HStack(spacing: 10) {
             Image(systemName: MimeTypes.icon(for: message)).font(.title2).foregroundStyle(message.isMine ? .white : Sowa.cyan)
             VStack(alignment: .leading, spacing: 2) {
-                Text(message.fileName ?? "Plik").font(.subheadline.bold()).lineLimit(2)
+                Text(message.fileName ?? String(localized: "Plik")).font(.subheadline.bold()).lineLimit(2)
                 if let f = message.attachmentFile,
                    let size = try? FileManager.default.attributesOfItem(atPath: Storage.media.appendingPathComponent(f).path)[.size] as? Int {
                     Text(MimeTypes.size(size)).font(.caption)

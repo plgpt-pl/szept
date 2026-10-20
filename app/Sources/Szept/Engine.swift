@@ -178,7 +178,7 @@ final class Engine {
             try context.save()
             return existing
         }
-        let c = Contact(id: link.accountId, name: (name?.isEmpty == false ? name : link.name) ?? "Kontakt \(link.accountId.prefix(6))",
+        let c = Contact(id: link.accountId, name: (name?.isEmpty == false ? name : link.name) ?? String(localized: "Kontakt \(String(link.accountId.prefix(6)))"),
                         identityKey: link.identityKey)
         context.insert(c)
         try store.pinIdentity(try IdentityKey(bytes: link.identityKey), for: try SzeptProtocol.address(link.accountId))
@@ -288,8 +288,8 @@ final class Engine {
     func sendFile(_ url: URL, to t: ChatTarget, replyTo: String? = nil) async {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { lastError = "Nie udało się odczytać pliku"; return }
-        guard data.count <= Config.maxFileBytes else { lastError = "Plik jest za duży (limit \(Config.maxFileBytes / 1_048_576) MB)"; return }
+        guard let data = try? Data(contentsOf: url) else { lastError = String(localized: "Nie udało się odczytać pliku"); return }
+        guard data.count <= Config.maxFileBytes else { lastError = String(localized: "Plik jest za duży (limit \(Config.maxFileBytes / 1_048_576) MB)"); return }
         let m = newMessage(for: t, text: "", replyTo: replyTo)
         m.kind = .file; m.fileName = url.lastPathComponent; m.mimeType = MimeTypes.mime(for: url.pathExtension)
         m.attachmentFile = saveMediaFile(data, ext: url.pathExtension)
@@ -396,7 +396,7 @@ final class Engine {
 
     func setDisappear(_ seconds: Int, for c: Contact) async {
         c.disappearAfter = seconds
-        let note = Message(contact: c, text: seconds > 0 ? "Znikające wiadomości: \(Durations.label(seconds))" : "Znikające wiadomości wyłączone", isMine: true)
+        let note = Message(contact: c, text: seconds > 0 ? String(localized: "Znikające wiadomości: \(Durations.label(seconds))") : String(localized: "Znikające wiadomości wyłączone"), isMine: true)
         note.status = .sent
         context.insert(note); try? context.save()
         try? await deliver(MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: .timer, expire: seconds), to: c)
@@ -412,7 +412,7 @@ final class Engine {
         let opened: SzeptProtocol.Opened
         do { opened = try proto.open(sealed) } catch {
             if case SignalError.untrustedIdentity = error, let c = unknownSenderContact(sealed) { c.identityChanged = true; try? context.save() }
-            lastError = "Nie udało się odszyfrować wiadomości: \(error.localizedDescription)"
+            lastError = String(localized: "Nie udało się odszyfrować wiadomości: \(error.localizedDescription)")
             return
         }
         guard let content = try? JSONDecoder().decode(MessageContent.self, from: opened.plaintext) else { return }
@@ -422,11 +422,11 @@ final class Engine {
             c = known
             if known.identityKey != identity { known.identityKey = identity; known.identityChanged = true; known.verified = false }
         } else {
-            c = Contact(id: opened.sender, name: content.name ?? "Nieznany \(opened.sender.prefix(6))", identityKey: identity)
+            c = Contact(id: opened.sender, name: content.name ?? String(localized: "Nieznany \(String(opened.sender.prefix(6)))"), identityKey: identity)
             c.fromUnknown = true
             context.insert(c)
         }
-        if let n = content.name, !n.isEmpty, c.fromUnknown, c.name.hasPrefix("Nieznany") { c.name = n }
+        if let n = content.name, !n.isEmpty, c.fromUnknown, c.name.hasPrefix(String(localized: "Nieznany")) || c.name.hasPrefix("Nieznany") { c.name = n }
 
         if let gid = content.g {                      // wiadomość grupowa – nie dotyka rozmowy 1:1 z nadawcą
             handleGroupContent(content, groupId: gid, sender: c)
@@ -452,7 +452,7 @@ final class Engine {
             if let ref = content.ref, let m = c.messages.first(where: { $0.id == ref }) { m.status = .delivered }
         case .timer:
             c.disappearAfter = content.expire ?? 0
-            let note = Message(contact: c, text: (content.expire ?? 0) > 0 ? "\(c.name): znikające wiadomości \(Durations.label(content.expire!))" : "\(c.name) wyłączył(a) znikające wiadomości", isMine: false)
+            let note = Message(contact: c, text: (content.expire ?? 0) > 0 ? String(localized: "\(c.name): znikające wiadomości \(Durations.label(content.expire!))") : String(localized: "\(c.name) wyłączył(a) znikające wiadomości"), isMine: false)
             note.status = .delivered
             context.insert(note)
         default:
@@ -484,7 +484,7 @@ final class Engine {
             if let ct = try? await api.downloadAttachment(att.id),
                let plain = try? SzeptProtocol.decryptAttachment(ct, key: .init(key: att.key, nonce: att.nonce)) {
                 m.attachmentFile = saveMediaFile(plain, ext: ext)
-            } else { m.text = "⚠️ Nie udało się pobrać załącznika" }
+            } else { m.text = String(localized: "⚠️ Nie udało się pobrać załącznika") }
             try? context.save()
             if let c { await sendReceipt(for: id, to: c) }
         }
@@ -562,7 +562,7 @@ final class Engine {
         guard UIApplication.shared.applicationState != .active else { return }
         let content = UNMutableNotificationContent()
         content.title = "Szept"
-        content.body = "Nowa wiadomość"
+        content.body = String(localized: "Nowa wiadomość")
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
@@ -593,8 +593,8 @@ final class Engine {
 enum ProtocolAddressDummy { static let value = try! ProtocolAddress(name: "-", deviceId: 1) }
 
 enum Durations {
-    static let options: [(Int, String)] = [(0, "Wyłączone"), (30, "30 sekund"), (300, "5 minut"), (3600, "1 godzina"),
-                                           (86400, "1 dzień"), (604800, "1 tydzień")]
+    static var options: [(Int, String)] { [(0, String(localized: "Wyłączone")), (30, String(localized: "30 sekund")), (300, String(localized: "5 minut")),
+                                           (3600, String(localized: "1 godzina")), (86400, String(localized: "1 dzień")), (604800, String(localized: "1 tydzień"))] }
     static func label(_ s: Int) -> String { options.first { $0.0 == s }?.1 ?? "\(s) s" }
     /// 0:07, 1:30
     static func clock(_ seconds: Double) -> String { let t = Int(seconds.rounded()); return "\(t / 60):" + String(format: "%02d", t % 60) }
@@ -638,8 +638,8 @@ extension Engine {
 
     func senderName(_ id: String?) -> String {
         guard let id else { return "" }
-        if id == accountId { return "Ty" }
-        return contact(id: id)?.name ?? "Nieznany \(id.prefix(6))"
+        if id == accountId { return String(localized: "Ty") }
+        return contact(id: id)?.name ?? String(localized: "Nieznany \(String(id.prefix(6)))")
     }
 
     private func groupNote(_ g: ChatGroup, _ text: String, mine: Bool) {
@@ -654,7 +654,7 @@ extension Engine {
         for c in memberContacts(g) {
             do { try await deliver(content, to: c) } catch { failures.append("\(c.name): \(error.localizedDescription)") }
         }
-        if !failures.isEmpty { throw SzeptError.server("nie dostarczono do: " + failures.joined(separator: "; ")) }
+        if !failures.isEmpty { throw SzeptError.server(String(localized: "nie dostarczono do: \(failures.joined(separator: "; "))")) }
     }
 
     private func groupStateContent(_ g: ChatGroup) -> MessageContent {
@@ -673,9 +673,9 @@ extension Engine {
     @discardableResult
     func createGroup(name: String, members: [Contact]) async -> ChatGroup {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let g = ChatGroup(id: UUID().uuidString.uppercased(), name: trimmed.isEmpty ? "Grupa" : trimmed, members: members.map(\.id))
+        let g = ChatGroup(id: UUID().uuidString.uppercased(), name: trimmed.isEmpty ? String(localized: "Grupa") : trimmed, members: members.map(\.id))
         context.insert(g)
-        groupNote(g, "Utworzyłeś(aś) grupę z: " + members.map(\.name).joined(separator: ", "), mine: true)
+        groupNote(g, String(localized: "Utworzyłeś(aś) grupę z: \(members.map(\.name).joined(separator: ", "))"), mine: true)
         try? context.save()
         await sendGroupState(g)
         return g
@@ -685,7 +685,7 @@ extension Engine {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != g.name else { return }
         g.name = trimmed; g.lastActivity = Date()
-        groupNote(g, "Zmieniłeś(aś) nazwę grupy na „\(trimmed)”", mine: true)
+        groupNote(g, String(localized: "Zmieniłeś(aś) nazwę grupy na „\(trimmed)”"), mine: true)
         try? context.save()
         await sendGroupState(g)
     }
@@ -694,7 +694,7 @@ extension Engine {
         let new = contacts.filter { !g.members.contains($0.id) }
         guard !new.isEmpty else { return }
         g.members.append(contentsOf: new.map(\.id)); g.lastActivity = Date()
-        groupNote(g, "Dodałeś(aś): " + new.map(\.name).joined(separator: ", "), mine: true)
+        groupNote(g, String(localized: "Dodałeś(aś): \(new.map(\.name).joined(separator: ", "))"), mine: true)
         try? context.save()
         await sendGroupState(g)
     }
@@ -722,7 +722,7 @@ extension Engine {
 
     func setDisappear(_ seconds: Int, for g: ChatGroup) async {
         g.disappearAfter = seconds
-        groupNote(g, seconds > 0 ? "Znikające wiadomości: \(Durations.label(seconds))" : "Znikające wiadomości wyłączone", mine: true)
+        groupNote(g, seconds > 0 ? String(localized: "Znikające wiadomości: \(Durations.label(seconds))") : String(localized: "Znikające wiadomości wyłączone"), mine: true)
         try? context.save()
         try? await deliverGroup(MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: .timer, expire: seconds, g: g.id), to: g)
     }
@@ -733,7 +733,7 @@ extension Engine {
     private func ensureMemberContact(_ m: MessageContent.Member) -> Contact? {
         if let existing = contact(id: m.i) { return existing }
         guard let key = Data(base64Encoded: m.k), (try? IdentityKey(bytes: key)) != nil else { return nil }
-        let c = Contact(id: m.i, name: (m.n?.isEmpty == false ? m.n! : "Kontakt \(m.i.prefix(6))"), identityKey: key)
+        let c = Contact(id: m.i, name: (m.n?.isEmpty == false ? m.n! : String(localized: "Kontakt \(String(m.i.prefix(6)))")), identityKey: key)
         c.fromUnknown = true
         context.insert(c)
         try? store.pinIdentity(try IdentityKey(bytes: key), for: try SzeptProtocol.address(m.i))
@@ -747,27 +747,27 @@ extension Engine {
             guard let list = content.members, list.contains(where: { $0.i == c.id }) else { return }
             let others = list.filter { $0.i != accountId }
             let ids = others.compactMap { ensureMemberContact($0)?.id }
-            let name = (content.gname?.isEmpty == false) ? content.gname! : "Grupa"
+            let name = (content.gname?.isEmpty == false) ? content.gname! : String(localized: "Grupa")
             if let g = existing {
                 guard g.members.contains(c.id) else { return }        // nie-członek nie steruje grupą
                 let added = Set(ids).subtracting(g.members), removed = Set(g.members).subtracting(ids)
                 var notes: [String] = []
-                if g.name != name { notes.append("zmienił(a) nazwę na „\(name)”"); g.name = name }
-                if !added.isEmpty { notes.append("dodał(a): " + added.map { senderName($0) }.joined(separator: ", ")) }
-                if !removed.isEmpty { notes.append("usunął(ęła): " + removed.map { senderName($0) }.joined(separator: ", ")) }
+                if g.name != name { notes.append(String(localized: "zmienił(a) nazwę na „\(name)”")); g.name = name }
+                if !added.isEmpty { notes.append(String(localized: "dodał(a): \(added.map { senderName($0) }.joined(separator: ", "))")) }
+                if !removed.isEmpty { notes.append(String(localized: "usunął(ęła): \(removed.map { senderName($0) }.joined(separator: ", "))")) }
                 g.members = ids
                 if !notes.isEmpty { groupNote(g, "\(c.name) " + notes.joined(separator: "; "), mine: false); g.lastActivity = Date() }
             } else {
                 let g = ChatGroup(id: groupId, name: name, members: ids)
                 context.insert(g)
-                groupNote(g, "\(c.name) dodał(a) Cię do grupy", mine: false)
+                groupNote(g, String(localized: "\(c.name) dodał(a) Cię do grupy"), mine: false)
                 g.unread = 1
                 notifyLocally()
             }
         case .group where content.op == "leave":
             guard let g = existing, g.members.contains(c.id) else { return }
             g.members.removeAll { $0 == c.id }
-            groupNote(g, "\(c.name) opuścił(a) grupę", mine: false)
+            groupNote(g, String(localized: "\(c.name) opuścił(a) grupę"), mine: false)
             g.lastActivity = Date()
         case .group:
             break
@@ -787,7 +787,7 @@ extension Engine {
         case .timer:
             guard let g = existing, g.members.contains(c.id) else { return }
             g.disappearAfter = content.expire ?? 0
-            groupNote(g, g.disappearAfter > 0 ? "\(c.name): znikające wiadomości \(Durations.label(g.disappearAfter))" : "\(c.name) wyłączył(a) znikające wiadomości", mine: false)
+            groupNote(g, g.disappearAfter > 0 ? String(localized: "\(c.name): znikające wiadomości \(Durations.label(g.disappearAfter))") : String(localized: "\(c.name) wyłączył(a) znikające wiadomości"), mine: false)
         case .receipt:
             break   // dla grup nie ma potwierdzeń odbioru
         }

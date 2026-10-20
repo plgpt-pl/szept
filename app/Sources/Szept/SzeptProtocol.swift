@@ -44,12 +44,12 @@ enum SzeptError: LocalizedError {
     case identityMismatch, badLink, noSession, badEnvelope, server(String), notRegistered
     var errorDescription: String? {
         switch self {
-        case .identityMismatch: return "Klucz tożsamości kontaktu nie zgadza się z zapisanym. Zweryfikuj kontakt osobiście."
-        case .badLink: return "To nie jest poprawny link/kod Szept."
-        case .noSession: return "Brak sesji z tym kontaktem."
-        case .badEnvelope: return "Nieczytelna koperta."
-        case .server(let s): return "Serwer: \(s)"
-        case .notRegistered: return "Najpierw utwórz tożsamość."
+        case .identityMismatch: return String(localized: "Klucz tożsamości kontaktu nie zgadza się z zapisanym. Zweryfikuj kontakt osobiście.")
+        case .badLink: return String(localized: "To nie jest poprawny link/kod Szept.")
+        case .noSession: return String(localized: "Brak sesji z tym kontaktem.")
+        case .badEnvelope: return String(localized: "Nieczytelna koperta.")
+        case .server(let s): return String(localized: "Serwer: \(s)")
+        case .notRegistered: return String(localized: "Najpierw utwórz tożsamość.")
         }
     }
 }

@@ -71,10 +71,10 @@ final class Message {
     var hasAttachment: Bool { isImage || kindRaw == "file" || kindRaw == "audio" }
     /// Krótki opis do listy czatów i cytatów.
     var summary: String {
-        if wasDeleted { return "Wiadomość usunięta" }
-        if isImage { return "📷 Zdjęcie" }
-        if kindRaw == "file" { return "📎 " + (fileName ?? "Plik") }
-        if kindRaw == "audio" { return "🎤 Głosówka " + Durations.clock(duration) }
+        if wasDeleted { return String(localized: "Wiadomość usunięta") }
+        if isImage { return String(localized: "📷 Zdjęcie") }
+        if kindRaw == "file" { return String(localized: "📎 \(fileName ?? String(localized: "Plik"))") }
+        if kindRaw == "audio" { return String(localized: "🎤 Głosówka \(Durations.clock(duration))") }
         return text
     }
     var reactions: [String: String] {

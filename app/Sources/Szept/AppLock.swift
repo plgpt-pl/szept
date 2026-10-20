@@ -18,10 +18,10 @@ final class AppLock {
 
     func authenticate() {
         let ctx = LAContext()
-        ctx.localizedCancelTitle = "Anuluj"
+        ctx.localizedCancelTitle = String(localized: "Anuluj")
         var err: NSError?
         guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &err) else { locked = false; return }
-        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Odblokuj Szept") { ok, _ in
+        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: String(localized: "Odblokuj Szept")) { ok, _ in
             Task { @MainActor in self.locked = !ok }
         }
     }

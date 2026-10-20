@@ -17,8 +17,8 @@ enum Demo {
         let marek = Contact(id: "MAREKxxxxxxxxxxxxxxxxx", name: "Marek", identityKey: key); marek.disappearAfter = 3600; marek.unread = 2
         ctx.insert(ola); ctx.insert(marek)
         let now = Date()
-        func add(_ c: Contact, _ t: String, mine: Bool, ago: TimeInterval, status: Message.Status = .delivered, expires: Bool = false) {
-            let m = Message(contact: c, text: t, isMine: mine, sentAt: now.addingTimeInterval(-ago)); m.status = status
+        func add(_ c: Contact, _ t: String.LocalizationValue, mine: Bool, ago: TimeInterval, status: Message.Status = .delivered, expires: Bool = false) {
+            let m = Message(contact: c, text: String(localized: t), isMine: mine, sentAt: now.addingTimeInterval(-ago)); m.status = status
             if expires { m.expiresAt = now.addingTimeInterval(3600 - ago) }
             ctx.insert(m)
         }

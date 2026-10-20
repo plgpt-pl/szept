@@ -48,7 +48,7 @@ struct AddContactView: View {
         VStack(spacing: 14) {
             if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
                 QRScanner { text in
-                    if let l = ContactLink(string: text) { scanned = l; Haptics.success() } else { error = "To nie jest kod Szept." }
+                    if let l = ContactLink(string: text) { scanned = l; Haptics.success() } else { error = String(localized: "To nie jest kod Szept.") }
                 }
                 .frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
@@ -57,7 +57,7 @@ struct AddContactView: View {
             HStack {
                 TextField("szept://add?…", text: $pasted).textFieldStyle(.roundedBorder).autocorrectionDisabled().textInputAutocapitalization(.never)
                 Button("Dodaj") {
-                    if let l = ContactLink(string: pasted) { scanned = l } else { error = "Niepoprawny link." }
+                    if let l = ContactLink(string: pasted) { scanned = l } else { error = String(localized: "Niepoprawny link.") }
                 }.buttonStyle(.borderedProminent).tint(Sowa.violet)
             }
             if let error { Text(error).font(.footnote).foregroundStyle(Sowa.warn) }

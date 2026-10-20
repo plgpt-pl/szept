@@ -43,7 +43,7 @@ struct SettingsView: View {
                 row("Kto z kim pisze", "nikt (koperta HPKE, wysyłka anonimowa)")
                 row("Kiedy odbierasz", "serwer (konieczne do doręczenia)")
                 row("Adres IP", "Cloudflare i serwer na czas połączenia, nie zapisywany")
-                row("Powiadomienia push", "brak – nic nie idzie przez Apple")
+                row("Powiadomienia push", "tylko sygnał „nowa wiadomość” przez Apple – bez treści i nadawcy")
             }
             Section {
                 Button(role: .destructive) { confirmWipe = true } label: { Label("Usuń konto i wszystkie dane", systemImage: "trash") }
@@ -66,7 +66,7 @@ struct SettingsView: View {
         }
     }
 
-    private func row(_ a: String, _ b: String) -> some View {
+    private func row(_ a: LocalizedStringKey, _ b: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) { Text(a).font(.subheadline); Text(b).font(.footnote).foregroundStyle(Sowa.textMuted) }
     }
 }

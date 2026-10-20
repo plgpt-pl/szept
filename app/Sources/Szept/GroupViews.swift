@@ -83,7 +83,7 @@ struct GroupInfoView: View {
                 LabeledContent("Identyfikator") { Text(group.id).font(.caption.monospaced()).textSelection(.enabled) }
             }
             Section("Członkowie (\(group.members.count + 1))") {
-                HStack { Avatar(name: engine.displayName.isEmpty ? "Ty" : engine.displayName, size: 36); Text("Ty").foregroundStyle(Sowa.textMuted) }
+                HStack { Avatar(name: engine.displayName.isEmpty ? String(localized: "Ty") : engine.displayName, size: 36); Text("Ty").foregroundStyle(Sowa.textMuted) }
                 ForEach(engine.memberContacts(group)) { c in
                     NavigationLink { ContactInfoView(contact: c) } label: {
                         HStack {
@@ -182,8 +182,8 @@ struct GroupRow: View {
         .padding(.vertical, 4)
     }
     private var preview: String {
-        guard let last = group.messages.max(by: { $0.sentAt < $1.sentAt }) else { return "Brak wiadomości" }
-        let who = last.isMine ? "Ty" : (last.senderId.map { engine.senderName($0) } ?? "")
+        guard let last = group.messages.max(by: { $0.sentAt < $1.sentAt }) else { return String(localized: "Brak wiadomości") }
+        let who = last.isMine ? String(localized: "Ty") : (last.senderId.map { engine.senderName($0) } ?? "")
         let body = last.summary
         return who.isEmpty ? body : "\(who): \(body)"
     }

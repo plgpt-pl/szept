@@ -1,0 +1,1746 @@
+{
+  "sourceLanguage": "pl",
+  "strings": {
+    "%@ dodał(a) Cię do grupy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ added you to the group"
+          }
+        }
+      }
+    },
+    "%@ opuścił(a) grupę": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ left the group"
+          }
+        }
+      }
+    },
+    "%@ wyłączył(a) znikające wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ turned off disappearing messages"
+          }
+        }
+      }
+    },
+    "%@: znikające wiadomości %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: disappearing messages %2$@"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld os.": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld os."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld os."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld member"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld members"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "(edytowano)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(edited)"
+          }
+        }
+      }
+    },
+    "1 dzień": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 day"
+          }
+        }
+      }
+    },
+    "1 godzina": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 hour"
+          }
+        }
+      }
+    },
+    "1 tydzień": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 week"
+          }
+        }
+      }
+    },
+    "30 sekund": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 seconds"
+          }
+        }
+      }
+    },
+    "5 minut": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 minutes"
+          }
+        }
+      }
+    },
+    "Adres": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        }
+      }
+    },
+    "Adres IP": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP address"
+          }
+        }
+      }
+    },
+    "Adres serwera": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server address"
+          }
+        }
+      }
+    },
+    "Anuluj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Bez numeru telefonu, e-maila i konta. Twoja tożsamość to klucz wygenerowany na tym telefonie.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No phone number, e-mail or account. Your identity is a key generated on this phone."
+          }
+        }
+      }
+    },
+    "Bezpieczeństwo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security"
+          }
+        }
+      }
+    },
+    "Blokada Face ID / kodem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Face ID / passcode lock"
+          }
+        }
+      }
+    },
+    "Brak kontaktów do dodania. Najpierw dodaj kogoś kodem QR.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No contacts to add. First add someone with a QR code."
+          }
+        }
+      }
+    },
+    "Brak sesji z tym kontaktem.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No session with this contact."
+          }
+        }
+      }
+    },
+    "Brak wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No messages"
+          }
+        }
+      }
+    },
+    "Ciemny": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dark"
+          }
+        }
+      }
+    },
+    "Cloudflare i serwer na czas połączenia, nie zapisywany": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloudflare and the server for the duration of the connection, not stored"
+          }
+        }
+      }
+    },
+    "Co wie kto": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who knows what"
+          }
+        }
+      }
+    },
+    "Cześć! Działa Ci już Szept?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hi! Is Szept working for you yet?"
+          }
+        }
+      }
+    },
+    "Członkowie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Members"
+          }
+        }
+      }
+    },
+    "Członkowie (%lld)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Members (%lld)"
+          }
+        }
+      }
+    },
+    "Członkowie i ustawienia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Members and settings"
+          }
+        }
+      }
+    },
+    "Dodaj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        }
+      }
+    },
+    "Dodaj do grupy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to group"
+          }
+        }
+      }
+    },
+    "Dodaj kontakt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add contact"
+          }
+        }
+      }
+    },
+    "Dodaj kontakt, pokazując swój kod QR albo skanując cudzy. Bez numerów, bez listy znajomych na serwerze.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a contact by showing your QR code or scanning theirs. No phone numbers, no friend list on the server."
+          }
+        }
+      }
+    },
+    "Dodaj osoby": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add people"
+          }
+        }
+      }
+    },
+    "Dodałeś(aś): %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You added: %@"
+          }
+        }
+      }
+    },
+    "Dzięki!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanks!"
+          }
+        }
+      }
+    },
+    "Edycja wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editing message"
+          }
+        }
+      }
+    },
+    "Edytuj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        }
+      }
+    },
+    "Emoji": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji"
+          }
+        }
+      }
+    },
+    "Gotowe": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "Grupa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group"
+          }
+        }
+      }
+    },
+    "Grupa istnieje tylko w telefonach członków. Serwer nie zna jej nazwy, składu ani tego, że istnieje – każda wiadomość jest szyfrowana osobno dla każdej osoby.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The group exists only on the members' phones. The server does not know its name, its members, or that it exists – every message is encrypted separately for each person."
+          }
+        }
+      }
+    },
+    "ID: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID: %@"
+          }
+        }
+      }
+    },
+    "Identyfikator": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "Informacje i weryfikacja": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Info and verification"
+          }
+        }
+      }
+    },
+    "Inna reakcja…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other reaction…"
+          }
+        }
+      }
+    },
+    "Ja": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me"
+          }
+        }
+      }
+    },
+    "Jasny": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light"
+          }
+        }
+      }
+    },
+    "Kiedy odbierasz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you receive"
+          }
+        }
+      }
+    },
+    "Klucz bezpieczeństwa tego kontaktu się zmienił (nowy telefon albo ktoś się podszywa). Potwierdź numer bezpieczeństwa.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This contact's safety key has changed (a new phone, or someone is impersonating them). Confirm the safety number."
+          }
+        }
+      }
+    },
+    "Klucz tożsamości kontaktu nie zgadza się z zapisanym. Zweryfikuj kontakt osobiście.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The contact's identity key does not match the stored one. Verify the contact in person."
+          }
+        }
+      }
+    },
+    "Klucze jednorazowe na serwerze": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One-time keys on the server"
+          }
+        }
+      }
+    },
+    "Kontakt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact"
+          }
+        }
+      }
+    },
+    "Kontakt %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact %@"
+          }
+        }
+      }
+    },
+    "Kopiuj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        }
+      }
+    },
+    "Kto z kim pisze": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who talks to whom"
+          }
+        }
+      }
+    },
+    "Mój identyfikator": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My identifier"
+          }
+        }
+      }
+    },
+    "Mój kod": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My code"
+          }
+        }
+      }
+    },
+    "Najpierw utwórz tożsamość.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an identity first."
+          }
+        }
+      }
+    },
+    "Nazwa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "Nazwa dla kontaktów": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name shown to contacts"
+          }
+        }
+      }
+    },
+    "Nazwa dla kontaktów (opcjonalnie)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name shown to contacts (optional)"
+          }
+        }
+      }
+    },
+    "Nazwa grupy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group name"
+          }
+        }
+      }
+    },
+    "Nazwa kontaktu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact name"
+          }
+        }
+      }
+    },
+    "Nie udało się odczytać pliku": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not read the file"
+          }
+        }
+      }
+    },
+    "Nie udało się odszyfrować wiadomości: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not decrypt the message: %@"
+          }
+        }
+      }
+    },
+    "Nieczytelna koperta.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unreadable envelope."
+          }
+        }
+      }
+    },
+    "Niepoprawny link.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid link."
+          }
+        }
+      }
+    },
+    "Nieznany": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown"
+          }
+        }
+      }
+    },
+    "Nieznany %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown %@"
+          }
+        }
+      }
+    },
+    "Nikogo tu jeszcze nie ma": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nobody here yet"
+          }
+        }
+      }
+    },
+    "Nowa grupa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New group"
+          }
+        }
+      }
+    },
+    "Nowa treść…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New text…"
+          }
+        }
+      }
+    },
+    "Nowa wiadomość": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New message"
+          }
+        }
+      }
+    },
+    "Nowy kontakt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New contact"
+          }
+        }
+      }
+    },
+    "Numer bezpieczeństwa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safety number"
+          }
+        }
+      }
+    },
+    "Odblokuj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock"
+          }
+        }
+      }
+    },
+    "Odblokuj Szept": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock Szept"
+          }
+        }
+      }
+    },
+    "Odpowiedz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply"
+          }
+        }
+      }
+    },
+    "Odpowiedź do: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply to: %@"
+          }
+        }
+      }
+    },
+    "Opuścić grupę „%@”?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave the group “%@”?"
+          }
+        }
+      }
+    },
+    "Opuścić grupę „%@”? Wiadomości znikną z tego telefonu, a członkowie zobaczą, że wyszedłeś(aś).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave the group “%@”? Messages will be removed from this phone and the members will see that you left."
+          }
+        }
+      }
+    },
+    "Opuść": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave"
+          }
+        }
+      }
+    },
+    "Opuść grupę": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave group"
+          }
+        }
+      }
+    },
+    "Osoby, których nie dodawałeś(aś) sam(a), trafiły tu z zaproszenia innego członka. Zweryfikuj ich numer bezpieczeństwa, zanim im zaufasz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "People you did not add yourself were invited by another member. Verify their safety number before you trust them."
+          }
+        }
+      }
+    },
+    "Plik": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        }
+      }
+    },
+    "Plik jest za duży (limit %lld MB)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File is too large (limit %lld MB)"
+          }
+        }
+      }
+    },
+    "Po czasie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After"
+          }
+        }
+      }
+    },
+    "Pokaż ten kod osobie, z którą chcesz rozmawiać, albo wyślij link innym kanałem. Kod zawiera Twój identyfikator i klucz publiczny – nic więcej.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show this code to the person you want to talk to, or send the link through another channel. The code contains only your ID and public key – nothing else."
+          }
+        }
+      }
+    },
+    "Porównaj ten numer z numerem widocznym u kontaktu (osobiście albo głosowo). Jeśli są identyczne, nikt nie podsłuchuje po drodze – także my jako operator serwera.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare this number with the one shown on your contact's phone (in person or by voice). If they match, nobody is listening in – not even us as the server operator."
+          }
+        }
+      }
+    },
+    "Powiadomienia push": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push notifications"
+          }
+        }
+      }
+    },
+    "Puść, żeby anulować": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release to cancel"
+          }
+        }
+      }
+    },
+    "Reakcja": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reaction"
+          }
+        }
+      }
+    },
+    "Rozmowy, których nikt poza Wami nie przeczyta.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversations nobody but you can read."
+          }
+        }
+      }
+    },
+    "Serwer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        }
+      }
+    },
+    "Serwer nie zna nadawcy ani treści – przechowuje tylko zaszyfrowane koperty do chwili odbioru.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server knows neither the sender nor the content – it only holds encrypted envelopes until they are picked up."
+          }
+        }
+      }
+    },
+    "Serwer widzi tylko: Twój losowy identyfikator, klucze publiczne i zaszyfrowane koperty do chwili odbioru. Nie zna nadawcy, treści ani Twoich kontaktów.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server only sees your random identifier, public keys and encrypted envelopes until they are picked up. It knows neither the sender, the content, nor your contacts."
+          }
+        }
+      }
+    },
+    "Serwer: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server: %@"
+          }
+        }
+      }
+    },
+    "Skaner niedostępny na tym urządzeniu – wklej link.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner unavailable on this device – paste the link."
+          }
+        }
+      }
+    },
+    "Skanuj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan"
+          }
+        }
+      }
+    },
+    "Sprawdź": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check"
+          }
+        }
+      }
+    },
+    "Super. Serwer naprawdę nic nie widzi?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Great. Does the server really see nothing?"
+          }
+        }
+      }
+    },
+    "Systemowy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        }
+      }
+    },
+    "Szepnij coś…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper something…"
+          }
+        }
+      }
+    },
+    "Szept": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szept"
+          }
+        }
+      }
+    },
+    "Szept %@ · libsignal (AGPL) · kod źródłowy otwarty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szept %@ · libsignal (AGPL) · open source"
+          }
+        }
+      }
+    },
+    "Szept zablokowany": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szept is locked"
+          }
+        }
+      }
+    },
+    "Szyfrowanie end-to-end protokołem Signal (PQXDH + Double Ratchet, odporność postkwantowa).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End-to-end encryption with the Signal protocol (PQXDH + Double Ratchet, post-quantum resistant)."
+          }
+        }
+      }
+    },
+    "Tak, właśnie zweryfikowałem Twój numer bezpieczeństwa 🙂": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, I just verified your safety number 🙂"
+          }
+        }
+      }
+    },
+    "Ten kontakt napisał pierwszy, nie dodawałeś go kodem QR. Zweryfikuj numer bezpieczeństwa, zanim mu zaufasz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This contact wrote first; you did not add them with a QR code. Verify the safety number before you trust them."
+          }
+        }
+      }
+    },
+    "To nie jest kod Szept.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is not a Szept code."
+          }
+        }
+      }
+    },
+    "To nie jest poprawny link/kod Szept.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is not a valid Szept link/code."
+          }
+        }
+      }
+    },
+    "To przerzucam tu całą rozmowę o projekcie.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Then I'm moving the whole project conversation here."
+          }
+        }
+      }
+    },
+    "Treść wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message content"
+          }
+        }
+      }
+    },
+    "Ty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You"
+          }
+        }
+      }
+    },
+    "Ty: ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You: "
+          }
+        }
+      }
+    },
+    "Tylko zaszyfrowane koperty, bez nadawcy. Treść zostaje między nami.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only encrypted envelopes, no sender. The content stays between us."
+          }
+        }
+      }
+    },
+    "Udostępnij": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        }
+      }
+    },
+    "Udostępnij link": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share link"
+          }
+        }
+      }
+    },
+    "Ustawienia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        }
+      }
+    },
+    "Ustawione, po godzinie znikną u nas obu.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done, they'll disappear for both of us after an hour."
+          }
+        }
+      }
+    },
+    "Usunąć konto? Klucze, kontakty i wiadomości znikną bezpowrotnie z tego telefonu i z serwera.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete the account? Keys, contacts and messages will be permanently removed from this phone and from the server."
+          }
+        }
+      }
+    },
+    "Usunąć rozmowę z %@? Wiadomości znikną z tego telefonu.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete the conversation with %@? Messages will be removed from this phone."
+          }
+        }
+      }
+    },
+    "Usuń": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        }
+      }
+    },
+    "Usuń konto i wszystkie dane": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account and all data"
+          }
+        }
+      }
+    },
+    "Usuń rozmowę i kontakt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete conversation and contact"
+          }
+        }
+      }
+    },
+    "Usuń u mnie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete for me"
+          }
+        }
+      }
+    },
+    "Usuń u wszystkich": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete for everyone"
+          }
+        }
+      }
+    },
+    "Usuń wszystko": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete everything"
+          }
+        }
+      }
+    },
+    "Utworzyłeś(aś)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You created"
+          }
+        }
+      }
+    },
+    "Utworzyłeś(aś) grupę z: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You created the group with: %@"
+          }
+        }
+      }
+    },
+    "Utwórz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create"
+          }
+        }
+      }
+    },
+    "Utwórz tożsamość": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create identity"
+          }
+        }
+      }
+    },
+    "W tej grupie nie ma już nikogo poza Tobą. Dodaj osoby w ustawieniach grupy albo ją opuść.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nobody left in this group but you. Add people in the group settings or leave it."
+          }
+        }
+      }
+    },
+    "Wiadomość usunięta": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message deleted"
+          }
+        }
+      }
+    },
+    "Wpisz emoji, którym chcesz zareagować.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type the emoji you want to react with."
+          }
+        }
+      }
+    },
+    "Wygląd": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appearance"
+          }
+        }
+      }
+    },
+    "Wysyłam Ci dokumenty, ustaw znikanie po godzinie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending you the documents, set them to disappear after an hour"
+          }
+        }
+      }
+    },
+    "Wyłączone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        }
+      }
+    },
+    "Zaakceptuj nowy klucz kontaktu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept the contact's new key"
+          }
+        }
+      }
+    },
+    "Zaawansowane": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced"
+          }
+        }
+      }
+    },
+    "Zamknij": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        }
+      }
+    },
+    "Zapisz i sprawdź": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save and check"
+          }
+        }
+      }
+    },
+    "Załącz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach"
+          }
+        }
+      }
+    },
+    "Zdjęcie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo"
+          }
+        }
+      }
+    },
+    "Zmieniłeś(aś) nazwę grupy na „%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You renamed the group to “%@”"
+          }
+        }
+      }
+    },
+    "Znikające wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disappearing messages"
+          }
+        }
+      }
+    },
+    "Znikające wiadomości wyłączone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disappearing messages off"
+          }
+        }
+      }
+    },
+    "Znikające wiadomości, blokada Face ID, zero kopii w chmurze.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disappearing messages, Face ID lock, no cloud copies."
+          }
+        }
+      }
+    },
+    "Znikające wiadomości: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disappearing messages: %@"
+          }
+        }
+      }
+    },
+    "Zweryfikowano osobiście": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified in person"
+          }
+        }
+      }
+    },
+    "dodał(a): %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "added: %@"
+          }
+        }
+      }
+    },
+    "nie dostarczono do: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not delivered to: %@"
+          }
+        }
+      }
+    },
+    "niedostępny": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unavailable"
+          }
+        }
+      }
+    },
+    "nikt (koperta HPKE, wysyłka anonimowa)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nobody (HPKE envelope, anonymous sending)"
+          }
+        }
+      }
+    },
+    "np. Adam": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Adam"
+          }
+        }
+      }
+    },
+    "np. Rodzina": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Family"
+          }
+        }
+      }
+    },
+    "offline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "offline"
+          }
+        }
+      }
+    },
+    "ponów": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "retry"
+          }
+        }
+      }
+    },
+    "połączono": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "connected"
+          }
+        }
+      }
+    },
+    "serwer (konieczne do doręczenia)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the server (needed for delivery)"
+          }
+        }
+      }
+    },
+    "tylko Ty i odbiorca": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only you and the recipient"
+          }
+        }
+      }
+    },
+    "tylko sygnał „nowa wiadomość” przez Apple – bez treści i nadawcy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only a “new message” signal via Apple – no content, no sender"
+          }
+        }
+      }
+    },
+    "usunął(ęła): %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "removed: %@"
+          }
+        }
+      }
+    },
+    "zmienił(a) nazwę na „%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "renamed the group to “%@”"
+          }
+        }
+      }
+    },
+    "łączenie…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "connecting…"
+          }
+        }
+      }
+    },
+    "◀︎ przesuń, by anulować": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "◀︎ slide to cancel"
+          }
+        }
+      }
+    },
+    "⚠️ Nie udało się pobrać załącznika": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⚠️ Could not download the attachment"
+          }
+        }
+      }
+    },
+    "🎤 Głosówka %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🎤 Voice message %@"
+          }
+        }
+      }
+    },
+    "📎 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📎 %@"
+          }
+        }
+      }
+    },
+    "📷 Zdjęcie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📷 Photo"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

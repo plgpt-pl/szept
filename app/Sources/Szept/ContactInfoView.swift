@@ -40,7 +40,7 @@ struct ContactInfoView: View {
         .navigationTitle("Kontakt")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotowe") { try? engine.context.save(); dismiss() } } }
-        .onAppear { safety = (try? engine.proto.safetyNumber(with: contact.id, identity: contact.identityKey)) ?? "niedostępny" }
+        .onAppear { safety = (try? engine.proto.safetyNumber(with: contact.id, identity: contact.identityKey)) ?? String(localized: "niedostępny") }
         .confirmationDialog("Usunąć rozmowę z \(contact.name)? Wiadomości znikną z tego telefonu.", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Usuń", role: .destructive) { engine.delete(contact); dismiss() }
         }
