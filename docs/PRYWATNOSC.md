@@ -8,7 +8,7 @@
 | Adres IP | – | nie zapisywany (limit zapytań tylko w RAM) | tak, na czas połączenia | nie | – |
 | Numer telefonu / e-mail / nazwisko | – | **nie istnieją w systemie** | – | – | – |
 | Kopia w chmurze | – | – | – | **nie** (katalog poza backupem, Keychain tylko to urządzenie) | – |
-| Powiadomienia | – | – | – | **nic nie idzie przez APNs** w v0.1 | – |
+| Powiadomienia (iOS od 0.3) | – | token urządzenia; wysyła tylko „Nowa wiadomość” | – | APNs: sygnał bez nadawcy i treści (wie, że telefon coś dostał) | – |
 
 Granice:
 - **Urządzenie** jest granicą zaufania: jailbreak, złośliwy profil MDM, zrzut ekranu rozmówcy – poza modelem.

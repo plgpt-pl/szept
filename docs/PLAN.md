@@ -49,3 +49,7 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 - Poza API (klika user w ASC): etykiety „App Privacy” (brak publicznego API), deklaracja szyfrowania przy KAŻDYM buildzie, finalne „Dodaj do recenzji”.
 - Zrzuty: iPhone 6,9" 1320×2868 + iPad 13" 2064×2752 z symulatorów (-demo), wgrywane do obu lokalizacji.
 - 20.10 19:52 UTC: wersja 0.2.0 (build 3) WYSŁANA do App Review (reviewSubmission w ~/.config/appstoreconnect/szept_review_submission), stan WAITING_FOR_REVIEW; App Privacy (User ID, App Functionality, nielinkowane, bez śledzenia) kliknięte przez usera.
+
+## 0.3 (21.10.2026, w toku)
+- Spec docs/WERSJA-0.3.md. Serwer (push APNs, 32 MB, 24 testy), Android (Chat.kt, Db v3, 9 testów) i iOS (Push.swift, Media.swift, 17 testów; 0.3.0 (4)) ZROBIONE i wypchnięte. Lokalizacja EN/PL w toku. Push czeka na klucz APNs od usera (portal → Keys → APNs) i wpisy SZEPT_APNS_* w server/.env.
+- Capability PUSH_NOTIFICATIONS na bundle ID włączona przez API; profil „Szept App Store” odtworzony (JVQ96974SY, aps-environment production) i wgrany do Xcode.

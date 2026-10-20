@@ -32,7 +32,7 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 </header>
 
 <div class="card">
-<p><strong>Administrator:</strong> Adam Dąbrowski, kontakt: <a href="mailto:szept@plgpt.pl">szept@plgpt.pl</a>. Dokument dotyczy aplikacji Szept na iOS i Android oraz serwera <code>szept.plgpt.pl</code>. Wersja z 20 października 2026.</p>
+<p><strong>Administrator:</strong> Adam Dąbrowski, kontakt: <a href="mailto:szept@plgpt.pl">szept@plgpt.pl</a>. Dokument dotyczy aplikacji Szept na iOS i Android oraz serwera <code>szept.plgpt.pl</code>. Wersja z 21 października 2026.</p>
 </div>
 
 <h2>1. Jakie dane w ogóle istnieją</h2>
@@ -52,7 +52,7 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 <tr><td>Adres IP</td><td>–</td><td class="no">nie zapisywany (limit zapytań liczony tylko w pamięci)</td><td>tak, na czas połączenia</td><td class="no">nie</td></tr>
 <tr><td>Numer telefonu, e-mail, nazwisko</td><td>–</td><td class="no">nie istnieją w systemie</td><td>–</td><td>–</td></tr>
 <tr><td>Kopia w chmurze</td><td>–</td><td>–</td><td>–</td><td class="no">nie (dane poza kopią zapasową, klucze tylko na tym urządzeniu)</td></tr>
-<tr><td>Powiadomienia</td><td>–</td><td>–</td><td>–</td><td class="no">nic nie przechodzi przez serwery powiadomień Apple ani Google</td></tr>
+<tr><td>Powiadomienia (iPhone, od 0.3)</td><td>–</td><td>wie, że konto ma telefon z włączonymi powiadomieniami (token urządzenia)</td><td>–</td><td>Apple: tylko sygnał „nowa wiadomość” bez nadawcy i treści; Google: nic (Android nie używa usług Google)</td></tr>
 </table>
 
 <h2>3. Co przechowuje serwer i jak długo</h2>
@@ -81,6 +81,9 @@ footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
 
 <h2>8. Kod źródłowy i zmiany</h2>
 <p>Cały kod aplikacji i serwera jest publiczny na licencji AGPL-3.0: <a href="https://github.com/plgpt-pl/szept">github.com/plgpt-pl/szept</a>. Każdy może sprawdzić, że działa tak, jak tu opisano. Zmiany tej polityki publikujemy na tej stronie z datą wersji.</p>
+
+<h2>9. Powiadomienia push na iPhonie (od wersji 0.3)</h2>
+<p>Jeśli pozwolisz aplikacji na powiadomienia, serwer zapamięta token Twojego urządzenia nadany przez Apple i gdy przyjdzie dla Ciebie wiadomość, a aplikacja nie jest połączona, wyśle przez serwery Apple sygnał o stałej treści „Nowa wiadomość”. Apple nie dostaje nadawcy, treści ani identyfikatora konta; dowiaduje się tylko, że na ten telefon coś przyszło. Token jest kasowany razem z kontem i po wyłączeniu powiadomień. Android powiadomień push nie używa (stałe połączenie z serwerem).</p>
 
 <footer>Szept · część zestawu narzędzi PLGPT · <a href="/">strona główna</a></footer>
 </main></body></html>
