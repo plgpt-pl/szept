@@ -42,3 +42,9 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 ## Publikacja kodu (19.10.2026)
 - Repozytorium publiczne: https://github.com/plgpt-pl/szept (organizacja `plgpt-pl` na koncie GitHub `mlodykawa`; konto `plgpt` należy do kogoś innego). Licencja AGPL-3.0 (`LICENSE`).
 - Poza gitem: `~/.config/appstoreconnect/` (klucz ASC, cert dystrybucyjny), `android/keystore.properties` + keystore, `server/.env`, `server/data/`.
+
+## App Store (20.10.2026)
+- Wersja 0.2.0 w ASC (id 7ff5bbd1…): kategorie Social Networking/Utilities, lokalizacje pl + en-US (opis, słowa kluczowe, podtytuł), ocena wiekowa (tylko messagingAndChat), prawa do treści, cena 0 zł (baza POL), dostępność 175 krajów, dane kontaktowe recenzenta, build 0.2.0 (3) podpięty, releaseType AFTER_APPROVAL. Wszystko przez API (`tools/asc.py`).
+- Polityka prywatności: https://szept.plgpt.pl/prywatnosc (static/prywatnosc.html, trasa /prywatnosc), kontakt szept@plgpt.pl (catch-all → Gmail).
+- Poza API (klika user w ASC): etykiety „App Privacy” (brak publicznego API), deklaracja szyfrowania przy KAŻDYM buildzie, finalne „Dodaj do recenzji”.
+- Zrzuty: iPhone 6,9" 1320×2868 + iPad 13" 2064×2752 z symulatorów (-demo), wgrywane do obu lokalizacji.

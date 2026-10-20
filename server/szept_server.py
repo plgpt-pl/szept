@@ -586,6 +586,10 @@ async def index(req):
     return web.Response(text=html, content_type="text/html", charset="utf-8")
 
 
+async def privacy(req):
+    return web.Response(text=(STATIC / "prywatnosc.html").read_text(), content_type="text/html", charset="utf-8")
+
+
 async def icon(req):
     return web.FileResponse(STATIC / "ikona.png")
 
@@ -631,6 +635,7 @@ def make_app(data_dir: Path = DATA) -> web.Application:
     app["wake"] = wake
     app.add_routes([
         web.get("/", index),
+        web.get("/prywatnosc", privacy),
         web.get("/ikona.png", icon),
         web.get("/szept.apk", apk),
         web.get("/szept.apk.sha256", apk_sum),

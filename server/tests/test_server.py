@@ -239,3 +239,9 @@ def test_rate_dict_evicts_empty_keys(monkeypatch):
         S._rate_hit(f"k{i}", 5)
     assert len(S._rate) <= 3
     S._rate.clear()
+
+
+async def test_privacy_page(cli):
+    r = await cli.get("/prywatnosc")
+    assert r.status == 200 and "Polityka prywatności" in await r.text()
+    assert r.headers["Content-Security-Policy"].startswith("default-src 'none'")

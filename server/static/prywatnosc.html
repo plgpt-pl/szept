@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Szept – polityka prywatności</title>
+<meta name="description" content="Polityka prywatności komunikatora Szept: jakie dane istnieją, kto je widzi, jak długo są przechowywane.">
+<link rel="icon" href="/ikona.png">
+<style>
+:root{--bg:#0A0E2B;--bg2:#2A1456;--card:#141A3E;--border:#2C356E;--text:#F1F2FA;--muted:#A2ACDC;--cyan:#5CE6FF;--magenta:#DA6CFF;--violet:#6B4DFF}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:linear-gradient(135deg,var(--bg),var(--bg2)) fixed;line-height:1.55}
+main{max-width:860px;margin:0 auto;padding:48px 16px 80px}
+header{text-align:center}header img{width:96px;height:96px;border-radius:22px;box-shadow:0 0 40px rgba(92,230,255,.35)}
+h1{font-size:36px;margin:16px 0 4px;background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);font-size:18px;margin:0 0 32px}
+h2{margin-top:40px;color:var(--cyan);font-size:22px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{color:var(--muted);font-weight:600}
+.yes{color:#4AE39E}.no{color:#FF6B8A}
+code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}
+a{color:var(--cyan)}
+ul{padding-left:22px}li{margin:6px 0}
+footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
+@media (max-width:600px){table{font-size:13px}td,th{padding:8px 4px}}
+</style>
+</head>
+<body><main>
+<header>
+<a href="/"><img src="/ikona.png" alt="Szept"></a>
+<h1>Polityka prywatności</h1>
+<p class="lead">Szept został zaprojektowany tak, żeby nie było czego chronić: nie ma kont, numerów telefonów ani treści, które moglibyśmy przeczytać.</p>
+</header>
+
+<div class="card">
+<p><strong>Administrator:</strong> Adam Dąbrowski, kontakt: <a href="mailto:szept@plgpt.pl">szept@plgpt.pl</a>. Dokument dotyczy aplikacji Szept na iOS i Android oraz serwera <code>szept.plgpt.pl</code>. Wersja z 20 października 2026.</p>
+</div>
+
+<h2>1. Jakie dane w ogóle istnieją</h2>
+<ul>
+<li><strong>Tożsamość</strong> to para kluczy kryptograficznych wygenerowana na Twoim telefonie. Nie podajesz numeru telefonu, adresu e-mail, imienia ani żadnych innych danych osobowych. Nie ma rejestracji ani logowania.</li>
+<li><strong>Identyfikator konta</strong> to losowy ciąg 128 bitów nadany przez serwer. Nie da się go powiązać z Tobą inaczej niż przez kontakt, któremu sam go przekażesz (kod QR lub link).</li>
+<li><strong>Treść wiadomości i zdjęć</strong> jest szyfrowana end-to-end biblioteką libsignal (protokół Signal: PQXDH i Double Ratchet). Klucze są tylko na telefonach rozmówców. Serwer, Cloudflare, Apple ani Google nie mogą odczytać treści.</li>
+<li><strong>Nazwa wyświetlana</strong>, którą wpisujesz w aplikacji, jest wysyłana wyłącznie do Twoich kontaktów, wewnątrz zaszyfrowanych wiadomości. Serwer jej nie zna.</li>
+</ul>
+
+<h2>2. Kto co widzi</h2>
+<table>
+<tr><th>Dane</th><th>Ty i rozmówca</th><th>Serwer Szept</th><th>Cloudflare</th><th>Apple / Google</th></tr>
+<tr><td>Treść wiadomości i zdjęć</td><td class="yes">tak</td><td class="no">nie</td><td class="no">nie</td><td class="no">nie</td></tr>
+<tr><td>Kto do kogo pisze</td><td class="yes">tak</td><td class="no">nie (koperta zapieczętowana do klucza odbiorcy, wysyłka anonimowa)</td><td class="no">nie</td><td class="no">nie</td></tr>
+<tr><td>Że konto X odebrało coś o godzinie H</td><td>–</td><td>tak, na czas doręczenia</td><td>tak (połączenie)</td><td class="no">nie</td></tr>
+<tr><td>Adres IP</td><td>–</td><td class="no">nie zapisywany (limit zapytań liczony tylko w pamięci)</td><td>tak, na czas połączenia</td><td class="no">nie</td></tr>
+<tr><td>Numer telefonu, e-mail, nazwisko</td><td>–</td><td class="no">nie istnieją w systemie</td><td>–</td><td>–</td></tr>
+<tr><td>Kopia w chmurze</td><td>–</td><td>–</td><td>–</td><td class="no">nie (dane poza kopią zapasową, klucze tylko na tym urządzeniu)</td></tr>
+<tr><td>Powiadomienia</td><td>–</td><td>–</td><td>–</td><td class="no">nic nie przechodzi przez serwery powiadomień Apple ani Google</td></tr>
+</table>
+
+<h2>3. Co przechowuje serwer i jak długo</h2>
+<ul>
+<li><strong>Klucze publiczne</strong> Twojego konta: tak długo, jak konto istnieje. Konto usuwasz w aplikacji jednym przyciskiem; serwer kasuje wtedy wszystko, co z nim związane.</li>
+<li><strong>Zaszyfrowane koperty</strong> z wiadomościami: do chwili odbioru przez adresata, najdłużej 30 dni.</li>
+<li><strong>Zaszyfrowane załączniki</strong>: do chwili pobrania, najdłużej 7 dni. Serwer zna tylko ich rozmiar.</li>
+<li><strong>Dzienniki</strong>: serwer nie zapisuje żądań, adresów IP ani identyfikatorów. Zapisywane są wyłącznie błędy techniczne bez danych użytkowników.</li>
+</ul>
+
+<h2>4. Dane na telefonie</h2>
+<p>Wiadomości, kontakty i klucze są zapisane wyłącznie na Twoim urządzeniu, w katalogu wykluczonym z kopii zapasowej iCloud oraz w pęku kluczy ograniczonym do tego urządzenia. Możesz włączyć blokadę aplikacji (Face ID / Touch ID / kod) i znikające wiadomości (od 30 sekund do 7 dni), które są kasowane u obu stron. Usunięcie aplikacji usuwa wszystkie dane; nie ma ich kopii u nas.</p>
+
+<h2>5. Podmioty trzecie</h2>
+<ul>
+<li><strong>Cloudflare</strong> pośredniczy w połączeniu z serwerem (ochrona przed przeciążeniem, TLS). Widzi Twój adres IP i czas połączenia, nie widzi treści ani identyfikatorów kont w kopertach. Polityka: <a href="https://www.cloudflare.com/privacypolicy/">cloudflare.com/privacypolicy</a>.</li>
+<li><strong>Apple</strong> (TestFlight, App Store) i <strong>Google</strong> nie otrzymują od aplikacji żadnych danych. Aplikacja nie zawiera modułów analitycznych, reklamowych ani śledzących i nie korzysta z usług Google.</li>
+<li><strong>Własny serwer</strong>: w ustawieniach aplikacji możesz wskazać inny adres serwera. Wtedy ta polityka dotyczy tylko oprogramowania, a za serwer odpowiada jego operator.</li>
+</ul>
+
+<h2>6. Twoje prawa</h2>
+<p>Ponieważ nie przetwarzamy danych pozwalających Cię zidentyfikować, nie jesteśmy w stanie wyszukać „Twoich” danych na żądanie. Wszystkie dane kontrolujesz sam: usunięcie konta w aplikacji kasuje je z serwera natychmiast, usunięcie aplikacji kasuje je z telefonu. W sprawach związanych z prywatnością pisz na <a href="mailto:szept@plgpt.pl">szept@plgpt.pl</a>. Masz prawo złożyć skargę do Prezesa Urzędu Ochrony Danych Osobowych.</p>
+
+<h2>7. Dzieci</h2>
+<p>Aplikacja nie jest kierowana do dzieci poniżej 13 lat i nie zbiera żadnych danych, które pozwalałyby ustalić wiek użytkownika.</p>
+
+<h2>8. Kod źródłowy i zmiany</h2>
+<p>Cały kod aplikacji i serwera jest publiczny na licencji AGPL-3.0: <a href="https://github.com/plgpt-pl/szept">github.com/plgpt-pl/szept</a>. Każdy może sprawdzić, że działa tak, jak tu opisano. Zmiany tej polityki publikujemy na tej stronie z datą wersji.</p>
+
+<footer>Szept · część zestawu narzędzi PLGPT · <a href="/">strona główna</a></footer>
+</main></body></html>
