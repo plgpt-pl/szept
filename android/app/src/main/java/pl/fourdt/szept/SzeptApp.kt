@@ -21,6 +21,7 @@ class SzeptApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        Strings.ctx = this
         engine = Engine(this)
         Notifications.channels(this)
         engine.onIncoming = { if (!inForeground) Notifications.newMessage(this) }
@@ -38,13 +39,13 @@ object Notifications {
     const val CH_MSG = "wiadomosci"; const val CH_SVC = "nasluch"
     fun channels(c: Context) {
         val nm = c.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CH_MSG, "Nowe wiadomości", NotificationManager.IMPORTANCE_HIGH))
-        nm.createNotificationChannel(NotificationChannel(CH_SVC, "Nasłuch w tle", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) })
+        nm.createNotificationChannel(NotificationChannel(CH_MSG, c.getString(R.string.ch_messages), NotificationManager.IMPORTANCE_HIGH))
+        nm.createNotificationChannel(NotificationChannel(CH_SVC, c.getString(R.string.ch_listen), NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) })
     }
     /** Bez treści i bez nadawcy – z telefonu nic nie wycieka na ekran blokady. */
     fun newMessage(c: Context) {
         val pi = PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val n = NotificationCompat.Builder(c, CH_MSG).setSmallIcon(android.R.drawable.ic_dialog_email).setContentTitle("Szept").setContentText("Nowa wiadomość")
+        val n = NotificationCompat.Builder(c, CH_MSG).setSmallIcon(android.R.drawable.ic_dialog_email).setContentTitle(c.getString(R.string.app_name)).setContentText(c.getString(R.string.new_message))
             .setContentIntent(pi).setAutoCancel(true).setVisibility(NotificationCompat.VISIBILITY_SECRET).build()
         try { c.getSystemService(NotificationManager::class.java).notify(1, n) } catch (_: SecurityException) {}
     }
@@ -55,8 +56,8 @@ class ListenService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val n = NotificationCompat.Builder(this, Notifications.CH_SVC).setSmallIcon(android.R.drawable.ic_lock_lock).setContentTitle("Szept nasłuchuje")
-            .setContentText("Połączenie z Twoim serwerem, bez usług Google").setContentIntent(pi).setOngoing(true).setPriority(NotificationCompat.PRIORITY_MIN).build()
+        val n = NotificationCompat.Builder(this, Notifications.CH_SVC).setSmallIcon(android.R.drawable.ic_lock_lock).setContentTitle(getString(R.string.listening_title))
+            .setContentText(getString(R.string.listening_text)).setContentIntent(pi).setOngoing(true).setPriority(NotificationCompat.PRIORITY_MIN).build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(2, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) else startForeground(2, n)
         SzeptApp.instance.engine.start()
         return START_STICKY

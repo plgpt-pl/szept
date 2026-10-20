@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -98,8 +100,8 @@ fun GradientButton(text: String, enabled: Boolean = true, onClick: () -> Unit) =
 @Composable
 fun LockScreen(onUnlock: () -> Unit) = Box(Modifier.fillMaxSize().background(Sowa.backdrop), contentAlignment = Alignment.Center) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Logo(96); Text("Szept zablokowany", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onUnlock) { Icon(Icons.Default.Fingerprint, null); Spacer(Modifier.width(8.dp)); Text("Odblokuj") }
+        Logo(96); Text(stringResource(R.string.lock_title), style = MaterialTheme.typography.titleLarge)
+        Button(onClick = onUnlock) { Icon(Icons.Default.Fingerprint, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.unlock)) }
     }
 }
 
@@ -115,22 +117,22 @@ fun OnboardingScreen(engine: Engine) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Spacer(Modifier.height(30.dp)); Logo(120)
         Text("Szept", fontSize = 40.sp, fontWeight = FontWeight.Bold)
-        Text("Rozmowy, których nikt poza Wami nie przeczyta.", color = Sowa.textMuted, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.tagline), color = Sowa.textMuted, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
         Card2 {
-            Bullet(Icons.Default.PersonOff, "Bez numeru telefonu, e-maila i konta. Twoja tożsamość to klucz wygenerowany na tym telefonie.")
-            Bullet(Icons.Default.Shield, "Szyfrowanie end-to-end protokołem Signal (PQXDH + Double Ratchet, odporność postkwantowa).")
-            Bullet(Icons.Default.VisibilityOff, "Serwer nie zna nadawcy ani treści – przechowuje tylko zaszyfrowane koperty do chwili odbioru.")
-            Bullet(Icons.Default.Timer, "Znikające wiadomości, blokada biometryczna, zero kopii w chmurze, zero usług Google.")
+            Bullet(Icons.Default.PersonOff, stringResource(R.string.onb_bullet1))
+            Bullet(Icons.Default.Shield, stringResource(R.string.onb_bullet2))
+            Bullet(Icons.Default.VisibilityOff, stringResource(R.string.onb_bullet3))
+            Bullet(Icons.Default.Timer, stringResource(R.string.onb_bullet4))
         }
         Card2 {
-            Text("Nazwa dla kontaktów (opcjonalnie)", color = Sowa.textMuted, style = MaterialTheme.typography.labelMedium)
-            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), placeholder = { Text("np. Adam") }, singleLine = true)
-            TextButton({ advanced = !advanced }) { Text("Zaawansowane") }
-            if (advanced) OutlinedTextField(server, { server = it }, Modifier.fillMaxWidth(), label = { Text("Adres serwera") }, singleLine = true,
+            Text(stringResource(R.string.name_for_contacts_optional), color = Sowa.textMuted, style = MaterialTheme.typography.labelMedium)
+            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.name_example)) }, singleLine = true)
+            TextButton({ advanced = !advanced }) { Text(stringResource(R.string.advanced)) }
+            if (advanced) OutlinedTextField(server, { server = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.server_address)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
         }
         error?.let { Text(it, color = Sowa.warn, textAlign = TextAlign.Center) }
-        GradientButton(if (busy) "Tworzę…" else "Utwórz tożsamość", enabled = !busy) {
+        GradientButton(stringResource(if (busy) R.string.creating else R.string.create_identity), enabled = !busy) {
             busy = true; error = null
             engine.displayName = name.trim(); engine.serverUrl = server.trim()
             scope.launch { try { engine.register() } catch (e: Exception) { error = e.message }; busy = false }
@@ -160,25 +162,25 @@ fun ChatListScreen(engine: Engine, nav: NavHostController) {
     var plus by remember { mutableStateOf(false) }
     Scaffold(containerColor = Color.Transparent, topBar = {
         TopAppBar(title = { Text("Szept", fontWeight = FontWeight.Bold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            navigationIcon = { IconButton({ nav.navigate("settings") }) { Icon(Icons.Default.Settings, "Ustawienia") } },
+            navigationIcon = { IconButton({ nav.navigate("settings") }) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
             actions = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(when (conn) { Connection.ONLINE -> Sowa.ok; Connection.CONNECTING -> Sowa.warn; else -> Color.Gray }))
                     Spacer(Modifier.width(6.dp))
-                    Text(when (conn) { Connection.ONLINE -> "połączono"; Connection.CONNECTING -> "łączenie…"; else -> "offline" }, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(when (conn) { Connection.ONLINE -> R.string.conn_online; Connection.CONNECTING -> R.string.conn_connecting; else -> R.string.conn_offline }), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
                 }
-                IconButton({ plus = true }) { Icon(Icons.Default.AddCircle, "Dodaj", tint = Sowa.cyan) }
+                IconButton({ plus = true }) { Icon(Icons.Default.AddCircle, stringResource(R.string.add), tint = Sowa.cyan) }
                 DropdownMenu(plus, { plus = false }) {
-                    DropdownMenuItem({ Text("Dodaj kontakt") }, { plus = false; nav.navigate("add") }, leadingIcon = { Icon(Icons.Default.QrCode, null) })
-                    DropdownMenuItem({ Text("Nowa grupa") }, { plus = false; nav.navigate("newgroup") }, leadingIcon = { Icon(Icons.Default.Group, null) }, enabled = contacts.isNotEmpty())
+                    DropdownMenuItem({ Text(stringResource(R.string.add_contact)) }, { plus = false; nav.navigate("add") }, leadingIcon = { Icon(Icons.Default.QrCode, null) })
+                    DropdownMenuItem({ Text(stringResource(R.string.new_group)) }, { plus = false; nav.navigate("newgroup") }, leadingIcon = { Icon(Icons.Default.Group, null) }, enabled = contacts.isNotEmpty())
                 }
             })
     }) { pad ->
         if (items.isEmpty()) Column(Modifier.fillMaxSize().padding(pad).padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Logo(90); Spacer(Modifier.height(14.dp))
-            Text("Nikogo tu jeszcze nie ma", style = MaterialTheme.typography.titleMedium)
-            Text("Dodaj kontakt, pokazując swój kod QR albo skanując cudzy. Bez numerów, bez listy znajomych na serwerze.", color = Sowa.textMuted, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 10.dp))
-            Button({ nav.navigate("add") }) { Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(6.dp)); Text("Dodaj kontakt") }
+            Text(stringResource(R.string.empty_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.empty_text), color = Sowa.textMuted, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 10.dp))
+            Button({ nav.navigate("add") }) { Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.add_contact)) }
         } else LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(items, key = { it.key }) { item ->
                 when (item) {
@@ -203,7 +205,7 @@ fun ContactRow(engine: Engine, c: Contact, onClick: () -> Unit) {
                 Spacer(Modifier.weight(1f)); Text(timeAgo(c.lastActivity), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (last == null) "Brak wiadomości" else (if (last.isMine) "Ty: " else "") + last.summary(),
+                Text(if (last == null) stringResource(R.string.no_messages) else (if (last.isMine) stringResource(R.string.you_prefix) else "") + last.summary(),
                     color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 if (c.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
                 if (c.unread > 0) Text("${c.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
@@ -219,7 +221,7 @@ fun GroupAvatar(size: Int = 44) = Box(Modifier.size(size.dp).clip(CircleShape).b
 }
 
 /** Nazwa nadawcy cudzej wiadomości grupowej: z kontaktu, inaczej „Nieznany”. */
-fun senderName(engine: Engine, m: Message): String = m.senderId?.let { engine.db.contact(it)?.name } ?: "Nieznany"
+fun senderName(engine: Engine, m: Message): String = m.senderId?.let { engine.db.contact(it)?.name } ?: Strings.get(R.string.unknown)
 
 @Composable
 fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
@@ -230,12 +232,12 @@ fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(g.name, fontWeight = FontWeight.SemiBold)
-                Text("  ${g.members.size + 1} os.", color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+                Text("  " + pluralStringResource(R.plurals.members, g.members.size + 1, g.members.size + 1), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.weight(1f)); Text(timeAgo(g.lastActivity), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val who = when { last == null -> ""; last.isMine -> "Ty: "; last.senderId != null -> senderName(engine, last) + ": "; else -> "" }
-                Text(if (last == null) "Brak wiadomości" else who + last.summary(),
+                val who = when { last == null -> ""; last.isMine -> stringResource(R.string.you_prefix); last.senderId != null -> senderName(engine, last) + ": "; else -> "" }
+                Text(if (last == null) stringResource(R.string.no_messages) else who + last.summary(),
                     color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 if (g.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
                 if (g.unread > 0) Text("${g.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
@@ -245,7 +247,8 @@ fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
     }
 }
 
-fun timeAgo(t: Long): String { val d = (System.currentTimeMillis() - t) / 1000; return when { d < 60 -> "teraz"; d < 3600 -> "${d / 60} min"; d < 86400 -> "${d / 3600} godz."; else -> "${d / 86400} dni" } }
+@Composable
+fun timeAgo(t: Long): String { val d = (System.currentTimeMillis() - t) / 1000; return when { d < 60 -> stringResource(R.string.time_now); d < 3600 -> stringResource(R.string.time_min, d / 60); d < 86400 -> stringResource(R.string.time_hours, d / 3600); else -> stringResource(R.string.time_days, d / 86400) } }
 fun hhmm(t: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(t))
 
 internal fun Brush2(c: Color) = androidx.compose.ui.graphics.Brush.linearGradient(listOf(c, c))
@@ -259,34 +262,34 @@ fun AddContactScreen(engine: Engine, nav: NavHostController) {
     var scanned by remember { mutableStateOf<ContactLink?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
-    val scanner = rememberLauncherForActivityResult(ScanContract()) { r -> r.contents?.let { ContactLink.parse(it)?.let { l -> scanned = l } ?: run { error = "To nie jest kod Szept." } } }
-    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("Dodaj kontakt") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+    val ctx = LocalContext.current
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { r -> r.contents?.let { ContactLink.parse(it)?.let { l -> scanned = l } ?: run { error = ctx.getString(R.string.not_szept_code) } } }
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.add_contact)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TabRow(tab, containerColor = Color.Transparent) { Tab(tab == 0, { tab = 0 }, text = { Text("Mój kod") }); Tab(tab == 1, { tab = 1 }, text = { Text("Skanuj") }) }
+            TabRow(tab, containerColor = Color.Transparent) { Tab(tab == 0, { tab = 0 }, text = { Text(stringResource(R.string.my_code)) }); Tab(tab == 1, { tab = 1 }, text = { Text(stringResource(R.string.scan)) }) }
             if (tab == 0) engine.myLink?.let { link ->
                 Card2 {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         val qr = remember(link.url) { qrBitmap(link.url) }
-                        Image(qr.asImageBitmap(), "Kod QR", Modifier.size(240.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(10.dp))
-                        Text("Pokaż ten kod osobie, z którą chcesz rozmawiać, albo wyślij link innym kanałem. Kod zawiera Twój identyfikator i klucz publiczny – nic więcej.", color = Sowa.textMuted, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                        Image(qr.asImageBitmap(), stringResource(R.string.qr_code), Modifier.size(240.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(10.dp))
+                        Text(stringResource(R.string.show_code_hint), color = Sowa.textMuted, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton({ clipboard.setText(AnnotatedString(link.url)) }) { Icon(Icons.Default.ContentCopy, null); Spacer(Modifier.width(6.dp)); Text("Kopiuj link") }
-                            val ctx = LocalContext.current
-                            OutlinedButton({ ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, link.url) }, "Udostępnij")) }) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("Udostępnij") }
+                            OutlinedButton({ clipboard.setText(AnnotatedString(link.url)) }) { Icon(Icons.Default.ContentCopy, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.copy_link)) }
+                            OutlinedButton({ ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, link.url) }, ctx.getString(R.string.share))) }) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.share)) }
                         }
-                        Text("ID: ${link.accountId}", color = Sowa.textMuted, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.id_label, link.accountId), color = Sowa.textMuted, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             } else Card2 {
-                Button({ scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Zeskanuj kod Szept").setBeepEnabled(false).setOrientationLocked(true)) }, Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Skanuj kod QR")
+                Button({ scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt(ctx.getString(R.string.scan_prompt)).setBeepEnabled(false).setOrientationLocked(true)) }, Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_qr))
                 }
-                Text("albo wklej link", color = Sowa.textMuted, modifier = Modifier.padding(vertical = 8.dp))
+                Text(stringResource(R.string.or_paste_link), color = Sowa.textMuted, modifier = Modifier.padding(vertical = 8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(pasted, { pasted = it }, Modifier.weight(1f), placeholder = { Text("szept://add?…") }, singleLine = true)
                     Spacer(Modifier.width(8.dp))
-                    Button({ ContactLink.parse(pasted)?.let { scanned = it } ?: run { error = "Niepoprawny link." } }) { Text("Dodaj") }
+                    Button({ ContactLink.parse(pasted)?.let { scanned = it } ?: run { error = ctx.getString(R.string.invalid_link) } }) { Text(stringResource(R.string.add)) }
                 }
                 error?.let { Text(it, color = Sowa.warn, style = MaterialTheme.typography.bodySmall) }
             }
@@ -299,14 +302,14 @@ fun AddContactScreen(engine: Engine, nav: NavHostController) {
 fun AddContactDialog(engine: Engine, link: ContactLink, onDone: (Boolean) -> Unit) {
     var name by remember { mutableStateOf(link.name ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = { onDone(false) }, title = { Text("Nowy kontakt") }, text = {
+    AlertDialog(onDismissRequest = { onDone(false) }, title = { Text(stringResource(R.string.new_contact)) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(name, { name = it }, label = { Text("Nazwa kontaktu") }, singleLine = true)
-            Text("ID: ${link.accountId}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted)
+            OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.contact_name)) }, singleLine = true)
+            Text(stringResource(R.string.id_label, link.accountId), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted)
             error?.let { Text(it, color = Sowa.warn) }
         }
-    }, confirmButton = { TextButton({ try { engine.addContact(link, name); onDone(true) } catch (e: Exception) { error = e.message } }) { Text("Dodaj") } },
-        dismissButton = { TextButton({ onDone(false) }) { Text("Anuluj") } })
+    }, confirmButton = { TextButton({ try { engine.addContact(link, name); onDone(true) } catch (e: Exception) { error = e.message } }) { Text(stringResource(R.string.add)) } },
+        dismissButton = { TextButton({ onDone(false) }) { Text(stringResource(R.string.cancel)) } })
 }
 
 fun qrBitmap(text: String, size: Int = 600): Bitmap {
@@ -323,38 +326,38 @@ fun ContactInfoScreen(engine: Engine, nav: NavHostController, id: String) {
     val v by engine.db.version.collectAsState()
     val c = remember(v) { engine.db.contact(id) } ?: return
     var name by remember { mutableStateOf(c.name) }
-    val safety = remember(c.identityKey) { try { engine.proto.safetyNumber(c.id, c.identityKey) } catch (e: Exception) { "niedostępny" } }
+    val safety = remember(c.identityKey) { try { engine.proto.safetyNumber(c.id, c.identityKey) } catch (e: Exception) { Strings.get(R.string.unavailable) } }
     var confirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("Kontakt") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.contact)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Card2 {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Avatar(name.ifEmpty { "?" }, 56); Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(name, { name = it; c.name = it; engine.db.save(c) }, Modifier.weight(1f), label = { Text("Nazwa") }, singleLine = true)
+                    OutlinedTextField(name, { name = it; c.name = it; engine.db.save(c) }, Modifier.weight(1f), label = { Text(stringResource(R.string.name)) }, singleLine = true)
                 }
-                Text("ID: ${c.id}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.id_label, c.id), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
             }
             Card2 {
-                Text("Numer bezpieczeństwa", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.safety_number), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
                 Text(safety, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(vertical = 8.dp))
-                Text("Porównaj ten numer z numerem widocznym u kontaktu (osobiście albo głosowo). Jeśli są identyczne, nikt nie podsłuchuje po drodze – także my jako operator serwera.", color = Sowa.textMuted, style = MaterialTheme.typography.bodySmall)
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) { Text("Zweryfikowano osobiście", Modifier.weight(1f)); Switch(c.verified, { c.verified = it; engine.db.save(c) }) }
-                if (c.identityChanged) TextButton({ engine.acceptNewIdentity(c) }) { Icon(Icons.Default.Key, null, tint = Sowa.warn); Spacer(Modifier.width(6.dp)); Text("Zaakceptuj nowy klucz kontaktu", color = Sowa.warn) }
+                Text(stringResource(R.string.safety_hint), color = Sowa.textMuted, style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.verified_in_person), Modifier.weight(1f)); Switch(c.verified, { c.verified = it; engine.db.save(c) }) }
+                if (c.identityChanged) TextButton({ engine.acceptNewIdentity(c) }) { Icon(Icons.Default.Key, null, tint = Sowa.warn); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.accept_new_key), color = Sowa.warn) }
             }
             Card2 {
-                Text("Znikające wiadomości", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.disappearing), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
                 Durations.options.forEach { (s, l) -> Row(Modifier.fillMaxWidth().clickable { scope.launch { engine.setDisappear(s, c) } }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(c.disappearAfter == s, null); Text(l)
+                    RadioButton(c.disappearAfter == s, null); Text(stringResource(l))
                 } }
             }
-            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text("Usuń rozmowę i kontakt") }
+            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.delete_chat_contact)) }
         }
     }
-    if (confirm) AlertDialog({ confirm = false }, title = { Text("Usunąć rozmowę z ${c.name}?") }, text = { Text("Wiadomości znikną z tego telefonu.") },
-        confirmButton = { TextButton({ engine.delete(c); confirm = false; nav.popBackStack("list", false) }) { Text("Usuń", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton({ confirm = false }) { Text("Anuluj") } })
+    if (confirm) AlertDialog({ confirm = false }, title = { Text(stringResource(R.string.delete_chat_q, c.name)) }, text = { Text(stringResource(R.string.delete_chat_text)) },
+        confirmButton = { TextButton({ engine.delete(c); confirm = false; nav.popBackStack("list", false) }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirm = false }) { Text(stringResource(R.string.cancel)) } })
 }
 
 // ---------- ustawienia ----------
@@ -371,46 +374,45 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     LaunchedEffect(Unit) { counts = withContext(Dispatchers.IO) { try { engine.api.keyCounts().let { "${it.prekeys} / ${it.kyber_prekeys}" } } catch (e: Exception) { "–" } } }
-    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("Ustawienia") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.settings)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Card2 {
-                Text("Ja", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(name, { name = it; engine.displayName = it }, Modifier.fillMaxWidth(), label = { Text("Nazwa dla kontaktów") }, singleLine = true)
-                Text("Mój identyfikator: ${engine.accountId}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 6.dp))
-                Text("Klucze jednorazowe na serwerze: $counts", style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted)
+                Text(stringResource(R.string.section_me), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(name, { name = it; engine.displayName = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.name_for_contacts)) }, singleLine = true)
+                Text(stringResource(R.string.my_id, engine.accountId ?: ""), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 6.dp))
+                Text(stringResource(R.string.one_time_keys, counts), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted)
             }
             Card2 {
-                Text("Bezpieczeństwo", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
-                Row(verticalAlignment = Alignment.CenterVertically) { Text("Blokada biometryczna / kodem", Modifier.weight(1f)); Switch(lock, { lock = it; engine.appLock = it }) }
+                Text(stringResource(R.string.security), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.biometric_lock), Modifier.weight(1f)); Switch(lock, { lock = it; engine.appLock = it }) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text("Nasłuch w tle"); Text("Stałe połączenie z Twoim serwerem zamiast usług Google. Dostajesz powiadomienie „Nowa wiadomość” bez treści.", style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
+                    Column(Modifier.weight(1f)) { Text(stringResource(R.string.listen_bg)); Text(stringResource(R.string.listen_bg_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
                     Switch(listen, { listen = it; engine.listenInBackground = it; if (it) ListenService.start(ctx) else ListenService.stop(ctx) })
                 }
             }
             Card2 {
-                Text("Serwer", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(server, { server = it }, Modifier.fillMaxWidth(), label = { Text("Adres") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                Text(stringResource(R.string.server), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(server, { server = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.address)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton({ engine.serverUrl = server.trim(); scope.launch { serverOk = withContext(Dispatchers.IO) { try { engine.api.health() } catch (e: Exception) { false } }; engine.connect() } }) { Text("Zapisz i sprawdź") }
+                    TextButton({ engine.serverUrl = server.trim(); scope.launch { serverOk = withContext(Dispatchers.IO) { try { engine.api.health() } catch (e: Exception) { false } }; engine.connect() } }) { Text(stringResource(R.string.save_and_check)) }
                     serverOk?.let { Icon(if (it) Icons.Default.CheckCircle else Icons.Default.Error, null, tint = if (it) Sowa.ok else Sowa.warn) }
                 }
-                Text("Serwer widzi tylko: Twój losowy identyfikator, klucze publiczne i zaszyfrowane koperty do chwili odbioru. Nie zna nadawcy, treści ani Twoich kontaktów.", style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted)
+                Text(stringResource(R.string.server_sees), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted)
             }
             Card2 {
-                Text("Co wie kto", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
-                listOf("Treść wiadomości" to "tylko Ty i odbiorca", "Kto z kim pisze" to "nikt (koperta HPKE, wysyłka anonimowa)", "Kiedy odbierasz" to "serwer (konieczne do doręczenia)",
-                    "Adres IP" to "Cloudflare i serwer na czas połączenia, nie zapisywany", "Google" to "nic – brak Play Services, własny kanał powiadomień").forEach { (a, b) ->
-                    Column(Modifier.padding(vertical = 4.dp)) { Text(a); Text(b, style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
+                Text(stringResource(R.string.who_knows), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                listOf(R.string.wk1a to R.string.wk1b, R.string.wk2a to R.string.wk2b, R.string.wk3a to R.string.wk3b, R.string.wk4a to R.string.wk4b, R.string.wk5a to R.string.wk5b).forEach { (a, b) ->
+                    Column(Modifier.padding(vertical = 4.dp)) { Text(stringResource(a)); Text(stringResource(b), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
                 }
             }
-            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text("Usuń konto i wszystkie dane") }
-            Text("Szept ${BuildConfig.VERSION_NAME} · libsignal (AGPL) · kod źródłowy otwarty", style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.delete_account_all)) }
+            Text(stringResource(R.string.about_line, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
     }
-    if (confirm) AlertDialog({ confirm = false }, title = { Text("Usunąć konto?") }, text = { Text("Klucze, kontakty i wiadomości znikną bezpowrotnie z tego telefonu i z serwera.") },
-        confirmButton = { TextButton({ confirm = false; scope.launch { engine.deleteEverything(); ListenService.stop(ctx); nav.popBackStack("list", false) } }) { Text("Usuń wszystko", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton({ confirm = false }) { Text("Anuluj") } })
+    if (confirm) AlertDialog({ confirm = false }, title = { Text(stringResource(R.string.delete_account_q)) }, text = { Text(stringResource(R.string.delete_account_text)) },
+        confirmButton = { TextButton({ confirm = false; scope.launch { engine.deleteEverything(); ListenService.stop(ctx); nav.popBackStack("list", false) } }) { Text(stringResource(R.string.delete_everything), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirm = false }) { Text(stringResource(R.string.cancel)) } })
 }
 
 // ---------- grupy ----------
@@ -423,22 +425,22 @@ fun NewGroupScreen(engine: Engine, nav: NavHostController) {
     val selected = remember { mutableStateListOf<String>() }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("Nowa grupa") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.new_group)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Card2 {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GroupAvatar(56); Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text("Nazwa grupy") }, placeholder = { Text("np. Ekipa") }, singleLine = true)
+                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text(stringResource(R.string.group_name)) }, placeholder = { Text(stringResource(R.string.group_name_example)) }, singleLine = true)
                 }
-                Text("Grupa istnieje tylko w telefonach członków. Serwer nie wie, kto w niej jest – każda wiadomość jest szyfrowana osobno do każdej osoby.",
+                Text(stringResource(R.string.group_hint),
                     color = Sowa.textMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
             }
-            Text("Członkowie (${selected.size})", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.members_n, selected.size), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(contacts, key = { it.id }) { c -> MemberPickRow(c, c.id in selected) { if (c.id in selected) selected.remove(c.id) else selected.add(c.id) } }
             }
-            GradientButton(if (busy) "Tworzę…" else "Utwórz grupę", enabled = selected.isNotEmpty() && !busy) {
+            GradientButton(stringResource(if (busy) R.string.creating else R.string.create_group), enabled = selected.isNotEmpty() && !busy) {
                 busy = true
                 scope.launch {
                     val g = engine.createGroup(name, contacts.filter { it.id in selected })
@@ -463,38 +465,38 @@ private fun MemberPickRow(c: Contact, checked: Boolean, onToggle: () -> Unit) =
 fun GroupInfoScreen(engine: Engine, nav: NavHostController, id: String) {
     val v by engine.db.version.collectAsState()
     val g = remember(v) { engine.db.group(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack("list", false) }; return }
-    val members = remember(v) { g.members.map { mid -> engine.db.contact(mid) ?: Contact(mid, "Nieznany ${mid.take(6)}", ByteArray(0), fromUnknown = true) } }
+    val members = remember(v) { g.members.map { mid -> engine.db.contact(mid) ?: Contact(mid, Strings.get(R.string.unknown_short, mid.take(6)), ByteArray(0), fromUnknown = true) } }
     val others = remember(v) { engine.db.contacts().filter { it.id !in g.members } }
     var name by remember(g.name) { mutableStateOf(g.name) }
     var addDialog by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }
     val picked = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
-    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("Grupa") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.group)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Card2 {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GroupAvatar(56); Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text("Nazwa grupy") }, singleLine = true)
+                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text(stringResource(R.string.group_name)) }, singleLine = true)
                 }
-                if (name.trim() != g.name && name.isNotBlank()) TextButton({ scope.launch { engine.renameGroup(g, name) } }) { Icon(Icons.Default.Check, null); Spacer(Modifier.width(6.dp)); Text("Zapisz nazwę (wyśle do członków)") }
-                Text("ID grupy: ${g.id}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
+                if (name.trim() != g.name && name.isNotBlank()) TextButton({ scope.launch { engine.renameGroup(g, name) } }) { Icon(Icons.Default.Check, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.save_name_sends)) }
+                Text(stringResource(R.string.group_id, g.id), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
             }
             Card2 {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Członkowie (${members.size + 1})", color = Sowa.cyan, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton({ picked.clear(); addDialog = true }, enabled = others.isNotEmpty()) { Icon(Icons.Default.PersonAdd, null); Spacer(Modifier.width(4.dp)); Text("Dodaj osoby") }
+                    Text(stringResource(R.string.members_n, members.size + 1), color = Sowa.cyan, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    TextButton({ picked.clear(); addDialog = true }, enabled = others.isNotEmpty()) { Icon(Icons.Default.PersonAdd, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.add_people)) }
                 }
                 Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(engine.displayName.ifEmpty { "Ja" }, 36); Spacer(Modifier.width(10.dp)); Text(engine.displayName.ifEmpty { "Ja" }, Modifier.weight(1f)); Text("Ty", color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+                    Avatar(engine.displayName.ifEmpty { stringResource(R.string.me) }, 36); Spacer(Modifier.width(10.dp)); Text(engine.displayName.ifEmpty { stringResource(R.string.me) }, Modifier.weight(1f)); Text(stringResource(R.string.you), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
                 }
                 members.forEach { c ->
                     Row(Modifier.fillMaxWidth().clickable(enabled = c.identityKey.isNotEmpty()) { nav.navigate("contact/${c.id}") }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Avatar(c.name, 36); Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(c.name)
-                            Text(when { c.identityChanged -> "klucz się zmienił – sprawdź"; c.verified -> "zweryfikowano osobiście"; c.fromUnknown -> "niezweryfikowany (dodany przez grupę)"; else -> "niezweryfikowany" },
+                            Text(stringResource(when { c.identityChanged -> R.string.member_key_changed; c.verified -> R.string.member_verified; c.fromUnknown -> R.string.member_unverified_group; else -> R.string.member_unverified }),
                                 color = if (c.identityChanged) Sowa.warn else Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
                         }
                         if (c.verified) Icon(Icons.Default.Verified, null, tint = Sowa.ok, modifier = Modifier.size(16.dp))
@@ -503,21 +505,21 @@ fun GroupInfoScreen(engine: Engine, nav: NavHostController, id: String) {
                 }
             }
             Card2 {
-                Text("Znikające wiadomości", color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.disappearing), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
                 Durations.options.forEach { (s, l) -> Row(Modifier.fillMaxWidth().clickable { scope.launch { engine.setDisappear(s, g) } }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(g.disappearAfter == s, null); Text(l)
+                    RadioButton(g.disappearAfter == s, null); Text(stringResource(l))
                 } }
             }
-            OutlinedButton({ confirmLeave = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null); Spacer(Modifier.width(6.dp)); Text("Opuść grupę") }
+            OutlinedButton({ confirmLeave = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.leave_group)) }
         }
     }
-    if (addDialog) AlertDialog({ addDialog = false }, title = { Text("Dodaj osoby") }, text = {
+    if (addDialog) AlertDialog({ addDialog = false }, title = { Text(stringResource(R.string.add_people)) }, text = {
         LazyColumn(Modifier.heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(others, key = { it.id }) { c -> MemberPickRow(c, c.id in picked) { if (c.id in picked) picked.remove(c.id) else picked.add(c.id) } }
         }
-    }, confirmButton = { TextButton({ val sel = others.filter { it.id in picked }; addDialog = false; scope.launch { engine.addMembers(g, sel) } }, enabled = picked.isNotEmpty()) { Text("Dodaj") } },
-        dismissButton = { TextButton({ addDialog = false }) { Text("Anuluj") } })
-    if (confirmLeave) AlertDialog({ confirmLeave = false }, title = { Text("Opuścić grupę „${g.name}”?") }, text = { Text("Pozostali dostaną informację, a wiadomości grupy znikną z tego telefonu.") },
-        confirmButton = { TextButton({ confirmLeave = false; scope.launch { engine.leaveGroup(g); nav.popBackStack("list", false) } }) { Text("Opuść", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton({ confirmLeave = false }) { Text("Anuluj") } })
+    }, confirmButton = { TextButton({ val sel = others.filter { it.id in picked }; addDialog = false; scope.launch { engine.addMembers(g, sel) } }, enabled = picked.isNotEmpty()) { Text(stringResource(R.string.add)) } },
+        dismissButton = { TextButton({ addDialog = false }) { Text(stringResource(R.string.cancel)) } })
+    if (confirmLeave) AlertDialog({ confirmLeave = false }, title = { Text(stringResource(R.string.leave_group_q, g.name)) }, text = { Text(stringResource(R.string.leave_group_text)) },
+        confirmButton = { TextButton({ confirmLeave = false; scope.launch { engine.leaveGroup(g); nav.popBackStack("list", false) } }) { Text(stringResource(R.string.leave), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirmLeave = false }) { Text(stringResource(R.string.cancel)) } })
 }

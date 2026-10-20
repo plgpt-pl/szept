@@ -73,7 +73,7 @@ class SzeptProtocol(val store: SignalStore, var accountId: String?) {
     }
 
     val identityKey: IdentityKey get() = store.identityKeyPair.publicKey
-    private fun me() = address(accountId ?: throw SzeptException("Najpierw utwórz tożsamość."))
+    private fun me() = address(accountId ?: throw SzeptException(Strings.get(R.string.not_registered)))
     private fun now() = System.currentTimeMillis()
 
     fun makeRegistration(): RegistrationPayload {
@@ -114,7 +114,7 @@ class SzeptProtocol(val store: SignalStore, var accountId: String?) {
     /** Sesja z paczki odbiorcy; `pinnedIdentity` (z QR/linku) musi się zgadzać – ochrona przed podmianą kluczy przez serwer. */
     fun processBundle(b: BundleJSON, pinnedIdentity: ByteArray?) {
         val idBytes = b.identity_key.unb64()
-        if (pinnedIdentity != null && !pinnedIdentity.contentEquals(idBytes)) throw SzeptException("Klucz tożsamości kontaktu nie zgadza się z zapisanym.")
+        if (pinnedIdentity != null && !pinnedIdentity.contentEquals(idBytes)) throw SzeptException(Strings.get(R.string.key_mismatch))
         val bundle = PreKeyBundle(b.registration_id, b.device_id, b.prekey?.id ?: PreKeyBundle.NULL_PRE_KEY_ID,
             b.prekey?.let { ECPublicKey(it.key.unb64()) }, b.signed_prekey.id, ECPublicKey(b.signed_prekey.key.unb64()),
             b.signed_prekey.signature.unb64(), IdentityKey(idBytes), b.kyber_prekey.id, KEMPublicKey(b.kyber_prekey.key.unb64()),
@@ -127,7 +127,7 @@ class SzeptProtocol(val store: SignalStore, var accountId: String?) {
     /** Szyfruje treść i pakuje w kopertę HPKE do klucza odbiorcy – serwer nie widzi nadawcy. */
     fun seal(plaintext: ByteArray, to: String, recipientIdentity: ByteArray): ByteArray {
         val msg: CiphertextMessage = cipher(address(to)).encrypt(plaintext)
-        val env = Envelope(t = msg.type, s = accountId ?: throw SzeptException("Najpierw utwórz tożsamość."), c = msg.serialize().b64())
+        val env = Envelope(t = msg.type, s = accountId ?: throw SzeptException(Strings.get(R.string.not_registered)), c = msg.serialize().b64())
         return IdentityKey(recipientIdentity).publicKey.seal(json.encodeToString(Envelope.serializer(), env).toByteArray(), ENVELOPE_INFO)
     }
 
@@ -135,19 +135,19 @@ class SzeptProtocol(val store: SignalStore, var accountId: String?) {
 
     fun open(sealed: ByteArray): Opened {
         val env = json.decodeFromString(Envelope.serializer(), String(store.identityKeyPair.privateKey.open(sealed, ENVELOPE_INFO)))
-        if (env.v != 1) throw SzeptException("Nieczytelna koperta.")
+        if (env.v != 1) throw SzeptException(Strings.get(R.string.bad_envelope))
         val from = address(env.s)
         val c = cipher(from)
         val (plain, isPre) = when (env.t) {
             CiphertextMessage.PREKEY_TYPE -> c.decrypt(PreKeySignalMessage(env.c.unb64())) to true
             CiphertextMessage.WHISPER_TYPE -> c.decrypt(SignalMessage(env.c.unb64())) to false
-            else -> throw SzeptException("Nieczytelna koperta.")
+            else -> throw SzeptException(Strings.get(R.string.bad_envelope))
         }
-        return Opened(env.s, plain, store.getIdentity(from) ?: throw SzeptException("Nieczytelna koperta."), isPre)
+        return Opened(env.s, plain, store.getIdentity(from) ?: throw SzeptException(Strings.get(R.string.bad_envelope)), isPre)
     }
 
     fun safetyNumber(contactId: String, identity: ByteArray): String {
-        val me = accountId ?: throw SzeptException("Najpierw utwórz tożsamość.")
+        val me = accountId ?: throw SzeptException(Strings.get(R.string.not_registered))
         return NumericFingerprintGenerator(5200).createFor(2, me.toByteArray(), identityKey, contactId.toByteArray(), IdentityKey(identity))
             .displayableFingerprint.displayText
     }

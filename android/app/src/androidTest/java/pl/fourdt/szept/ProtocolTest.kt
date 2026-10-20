@@ -142,7 +142,7 @@ class ProtocolTest {
         Thread.sleep(700); a.drainPending(); c.drainPending()
         assertEquals(listOf(c.accountId), a.db.group(g.id)!!.members)
         assertEquals(listOf(a.accountId), c.db.group(g.id)!!.members)
-        assertTrue(a.db.messagesForGroup(g.id).any { it.text.contains("opuścił") })
+        assertTrue(a.db.messagesForGroup(g.id).any { it.text.contains(ctx.getString(R.string.note_left, "").trim()) })   // notatka w języku urządzenia
         a.api.deleteAccount(); b.api.deleteAccount(); c.api.deleteAccount()
     }
 
@@ -172,7 +172,7 @@ class ProtocolTest {
         m.withReaction("A", "👍"); m.withReaction("B", "❤️"); assertEquals(mapOf("A" to "👍", "B" to "❤️"), m.reactionMap())
         m.withReaction("A", null); assertEquals(mapOf("B" to "❤️"), m.reactionMap())
         assertEquals("📎 raport.pdf", Message("M3", "C", "", false, 0L, kind = Message.FILE, fileName = "raport.pdf").summary())
-        assertEquals("🎤 Głosówka 0:12", Message("M4", "C", "", false, 0L, kind = Message.AUDIO, duration = 12.5).summary())
+        assertEquals(ctx.getString(R.string.summary_voice, "0:12"), Message("M4", "C", "", false, 0L, kind = Message.AUDIO, duration = 12.5).summary())
     }
 
     @Test fun v03TwoPhonesThroughServer() = runBlocking {

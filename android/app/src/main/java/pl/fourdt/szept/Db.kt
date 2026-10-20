@@ -36,10 +36,10 @@ data class Message(val id: String, val contactId: String?, var text: String, val
     fun withReaction(sender: String, emoji: String?) { val o = JSONObject(reactions); if (emoji == null) o.remove(sender) else o.put(sender, emoji); reactions = o.toString() }
     /** Jednolinijkowy opis do listy czatów i cytatów. */
     fun summary(): String = when {
-        deleted -> "Wiadomość usunięta"
-        kind == IMAGE -> "📷 Zdjęcie"
-        kind == FILE -> "📎 " + (fileName ?: "plik")
-        kind == AUDIO -> "🎤 Głosówka " + durationLabel(duration)
+        deleted -> Strings.get(R.string.message_deleted)
+        kind == IMAGE -> Strings.get(R.string.summary_photo)
+        kind == FILE -> Strings.get(R.string.summary_file, fileName ?: Strings.get(R.string.file_lower))
+        kind == AUDIO -> Strings.get(R.string.summary_voice, durationLabel(duration))
         else -> text
     }
 }

@@ -45,6 +45,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -73,11 +75,11 @@ fun ChatScreen(engine: Engine, nav: NavHostController, id: String) {
     val messages = remember(v) { engine.db.messages(id) }
     LaunchedEffect(v) { engine.markRead(contact) }
     ChatBody(engine, nav, title = contact.name, messages = messages, disappearAfter = contact.disappearAfter,
-        onSetDisappear = { engine.setDisappear(it, contact) }, infoRoute = "contact/$id", infoLabel = "Informacje i weryfikacja",
+        onSetDisappear = { engine.setDisappear(it, contact) }, infoRoute = "contact/$id", infoLabel = stringResource(R.string.info_verify),
         onSendText = { t, r -> engine.sendText(t, contact, r) }, onSendImage = { b, r -> engine.sendImage(b, contact, r) },
         onSendFile = { d, n, m, r -> engine.sendFile(d, n, m, contact, r) }, onSendAudio = { d, s, r -> engine.sendAudio(d, s, contact, r) }, showSender = false) {
-        if (contact.identityChanged) Banner(Sowa.warn.copy(alpha = 0.2f), Icons.Default.Warning, "Klucz bezpieczeństwa tego kontaktu się zmienił. Potwierdź numer bezpieczeństwa.") { nav.navigate("contact/$id") }
-        if (contact.fromUnknown && !contact.verified) Banner(Sowa.glow, Icons.Default.PersonSearch, "Ten kontakt napisał pierwszy. Zweryfikuj numer bezpieczeństwa, zanim mu zaufasz.") { nav.navigate("contact/$id") }
+        if (contact.identityChanged) Banner(Sowa.warn.copy(alpha = 0.2f), Icons.Default.Warning, stringResource(R.string.banner_key_changed)) { nav.navigate("contact/$id") }
+        if (contact.fromUnknown && !contact.verified) Banner(Sowa.glow, Icons.Default.PersonSearch, stringResource(R.string.banner_first_contact)) { nav.navigate("contact/$id") }
     }
 }
 
@@ -88,8 +90,8 @@ fun GroupChatScreen(engine: Engine, nav: NavHostController, id: String) {
     val group = remember(v) { engine.db.group(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val messages = remember(v) { engine.db.messagesForGroup(id) }
     LaunchedEffect(v) { engine.markRead(group) }
-    ChatBody(engine, nav, title = group.name, subtitle = "${group.members.size + 1} os.", messages = messages, disappearAfter = group.disappearAfter,
-        onSetDisappear = { engine.setDisappear(it, group) }, infoRoute = "groupinfo/$id", infoLabel = "Informacje o grupie",
+    ChatBody(engine, nav, title = group.name, subtitle = pluralStringResource(R.plurals.members, group.members.size + 1, group.members.size + 1), messages = messages, disappearAfter = group.disappearAfter,
+        onSetDisappear = { engine.setDisappear(it, group) }, infoRoute = "groupinfo/$id", infoLabel = stringResource(R.string.group_info),
         onSendText = { t, r -> engine.sendText(t, group, r) }, onSendImage = { b, r -> engine.sendImage(b, group, r) },
         onSendFile = { d, n, m, r -> engine.sendFile(d, n, m, group, r) }, onSendAudio = { d, s, r -> engine.sendAudio(d, s, group, r) }, showSender = true) {}
 }
@@ -117,7 +119,8 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
     val listState = rememberLazyListState()
     val indexById = remember(messages) { messages.withIndex().associate { it.value.id to it.index } }
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) }
-    fun nameOf(m: Message): String = when { m.isMine -> "Ty"; m.senderId != null -> senderName(engine, m); else -> title }
+    val you = stringResource(R.string.you)
+    fun nameOf(m: Message): String = when { m.isMine -> you; m.senderId != null -> senderName(engine, m); else -> title }
     fun consumeReply(): String? = replyTo?.id.also { replyTo = null }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
@@ -131,50 +134,50 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
         scope.launch {
             val p = withContext(Dispatchers.IO) { readPicked(ctx, uri) }
             when {
-                p == null -> Toast.makeText(ctx, "Nie udało się odczytać pliku.", Toast.LENGTH_LONG).show()
-                p.data.size > Config.MAX_FILE -> Toast.makeText(ctx, "Plik jest za duży (limit ${Config.MAX_FILE / 1024 / 1024} MB).", Toast.LENGTH_LONG).show()
+                p == null -> Toast.makeText(ctx, ctx.getString(R.string.file_read_failed), Toast.LENGTH_LONG).show()
+                p.data.size > Config.MAX_FILE -> Toast.makeText(ctx, ctx.getString(R.string.file_too_big, Config.MAX_FILE / 1024 / 1024), Toast.LENGTH_LONG).show()
                 else -> onSendFile(p.data, p.name, p.mime, consumeReply())
             }
         }
     }
-    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (!ok) Toast.makeText(ctx, "Bez dostępu do mikrofonu nie nagram głosówki.", Toast.LENGTH_LONG).show() }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (!ok) Toast.makeText(ctx, ctx.getString(R.string.mic_denied), Toast.LENGTH_LONG).show() }
     val recorder = remember { VoiceRecorder(ctx) }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
 
     Scaffold(containerColor = Color.Transparent, topBar = {
         TopAppBar(title = { Column { Text(title, maxLines = 1); subtitle?.let { Text(it, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall) } } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wstecz") } },
+            navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = {
                 IconButton({ menu = true }) { Icon(if (disappearAfter > 0) Icons.Default.Timer else Icons.Default.MoreVert, null) }
                 DropdownMenu(menu, { menu = false }) {
-                    Durations.options.forEach { (s, l) -> DropdownMenuItem({ Text((if (s == disappearAfter) "✓ " else "") + l) }, { menu = false; scope.launch { onSetDisappear(s) } }) }
+                    Durations.options.forEach { (s, l) -> DropdownMenuItem({ Text((if (s == disappearAfter) "✓ " else "") + stringResource(l)) }, { menu = false; scope.launch { onSetDisappear(s) } }) }
                     HorizontalDivider()
                     DropdownMenuItem({ Text(infoLabel) }, { menu = false; nav.navigate(infoRoute) }, leadingIcon = { Icon(if (showSender) Icons.Default.Group else Icons.Default.Verified, null) })
                 }
             })
     }, bottomBar = {
         Column(Modifier.fillMaxWidth().background(Sowa.card.copy(alpha = 0.9f)).imePadding().navigationBarsPadding()) {
-            replyTo?.let { r -> ComposerHint(Icons.AutoMirrored.Filled.Reply, "Odpowiedź do ${nameOf(r)}", r.summary()) { replyTo = null } }
-            editing?.let { ComposerHint(Icons.Default.Edit, "Edytujesz wiadomość", it.text) { editing = null; draft = "" } }
+            replyTo?.let { r -> ComposerHint(Icons.AutoMirrored.Filled.Reply, stringResource(R.string.reply_to, nameOf(r)), r.summary()) { replyTo = null } }
+            editing?.let { ComposerHint(Icons.Default.Edit, stringResource(R.string.editing_message), it.text) { editing = null; draft = "" } }
             Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.Bottom) {
                 if (recording) {
                     var secs by remember { mutableIntStateOf(0) }
                     LaunchedEffect(Unit) { while (true) { secs = ((System.currentTimeMillis() - recordStart) / 1000).toInt(); delay(250) } }
                     Row(Modifier.weight(1f).height(56.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error)); Spacer(Modifier.width(8.dp))
-                        Text("Nagrywanie ${durationLabel(secs.toDouble())}", color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(Modifier.width(10.dp)); Text("◀ przesuń, aby anulować", color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.recording, durationLabel(secs.toDouble())), color = MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.width(10.dp)); Text(stringResource(R.string.slide_to_cancel), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     Box {
-                        IconButton({ attach = true }) { Icon(Icons.Default.AttachFile, "Załącznik", tint = Sowa.cyan) }
+                        IconButton({ attach = true }) { Icon(Icons.Default.AttachFile, stringResource(R.string.attachment), tint = Sowa.cyan) }
                         DropdownMenu(attach, { attach = false }) {
-                            DropdownMenuItem({ Text("Zdjęcie") }, { attach = false; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, leadingIcon = { Icon(Icons.Default.Image, null) })
-                            DropdownMenuItem({ Text("Plik") }, { attach = false; filePicker.launch(arrayOf("*/*")) }, leadingIcon = { Icon(Icons.Default.Description, null) })
+                            DropdownMenuItem({ Text(stringResource(R.string.photo)) }, { attach = false; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, leadingIcon = { Icon(Icons.Default.Image, null) })
+                            DropdownMenuItem({ Text(stringResource(R.string.file)) }, { attach = false; filePicker.launch(arrayOf("*/*")) }, leadingIcon = { Icon(Icons.Default.Description, null) })
                         }
                     }
-                    OutlinedTextField(draft, { draft = it }, Modifier.weight(1f), placeholder = { Text(if (editing != null) "Nowa treść…" else "Szepnij coś…") }, maxLines = 6, shape = RoundedCornerShape(20.dp))
+                    OutlinedTextField(draft, { draft = it }, Modifier.weight(1f), placeholder = { Text(stringResource(if (editing != null) R.string.new_text_hint else R.string.compose_hint)) }, maxLines = 6, shape = RoundedCornerShape(20.dp))
                 }
                 Spacer(Modifier.width(8.dp))
                 if (draft.isBlank() && editing == null) {
@@ -185,13 +188,13 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
                         recording = false
                         val r = recorder.stop(cancelled)
                         if (r != null) scope.launch { onSendAudio(r.first, r.second, consumeReply()) }
-                        else if (!cancelled) Toast.makeText(ctx, "Za krótkie nagranie.", Toast.LENGTH_SHORT).show()
+                        else if (!cancelled) Toast.makeText(ctx, ctx.getString(R.string.recording_too_short), Toast.LENGTH_SHORT).show()
                     })
                 } else Box(Modifier.size(42.dp).clip(CircleShape).background(Sowa.action).clickable {
                     val t = draft; draft = ""
                     val e = editing
                     if (e != null) { editing = null; scope.launch { engine.edit(e, t) } } else { val r = consumeReply(); scope.launch { onSendText(t, r) } }
-                }, contentAlignment = Alignment.Center) { Icon(if (editing != null) Icons.Default.Check else Icons.Default.ArrowUpward, "Wyślij", tint = Color.White) }
+                }, contentAlignment = Alignment.Center) { Icon(if (editing != null) Icons.Default.Check else Icons.Default.ArrowUpward, stringResource(R.string.send), tint = Color.White) }
             }
         }
     }) { pad ->
@@ -220,29 +223,29 @@ private fun ComposerHint(icon: ImageVector, title: String, text: String, onClose
     Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Sowa.cyan, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) { Text(title, color = Sowa.cyan, style = MaterialTheme.typography.labelSmall); Text(text, color = Sowa.textMuted, maxLines = 1, style = MaterialTheme.typography.bodySmall) }
-        IconButton(onClose) { Icon(Icons.Default.Close, "Anuluj", tint = Sowa.textMuted) }
+        IconButton(onClose) { Icon(Icons.Default.Close, stringResource(R.string.cancel), tint = Sowa.textMuted) }
     }
 
 @Composable
 private fun EmojiDialog(mine: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
     var custom by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Reakcja") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.reaction)) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 QUICK_EMOJI.forEach { e -> Text(e, fontSize = 26.sp, modifier = Modifier.clip(CircleShape).background(if (e == mine) Sowa.glow else Color.Transparent).clickable { onPick(if (e == mine) null else e) }.padding(4.dp)) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(custom, { custom = it.take(Config.MAX_EMOJI) }, Modifier.weight(1f), placeholder = { Text("dowolne emoji") }, singleLine = true)
-                Spacer(Modifier.width(6.dp)); TextButton({ if (custom.isNotBlank()) onPick(custom.trim()) }) { Text("OK") }
+                OutlinedTextField(custom, { custom = it.take(Config.MAX_EMOJI) }, Modifier.weight(1f), placeholder = { Text(stringResource(R.string.any_emoji)) }, singleLine = true)
+                Spacer(Modifier.width(6.dp)); TextButton({ if (custom.isNotBlank()) onPick(custom.trim()) }) { Text(stringResource(R.string.ok)) }
             }
-            if (mine != null) TextButton({ onPick(null) }) { Text("Cofnij moją reakcję ($mine)") }
+            if (mine != null) TextButton({ onPick(null) }) { Text(stringResource(R.string.remove_my_reaction, mine)) }
         }
-    }, confirmButton = {}, dismissButton = { TextButton(onDismiss) { Text("Anuluj") } })
+    }, confirmButton = {}, dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } })
 }
 
 @Composable
 internal fun Banner(bg: Color, icon: ImageVector, text: String, onClick: () -> Unit) = Row(Modifier.fillMaxWidth().background(bg).clickable(onClick = onClick).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-    Icon(icon, null, tint = Sowa.cyan); Spacer(Modifier.width(8.dp)); Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f)); Text("Sprawdź", color = Sowa.cyan, style = MaterialTheme.typography.labelMedium)
+    Icon(icon, null, tint = Sowa.cyan); Spacer(Modifier.width(8.dp)); Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f)); Text(stringResource(R.string.check), color = Sowa.cyan, style = MaterialTheme.typography.labelMedium)
 }
 
 // ---------- dymek ----------
@@ -268,7 +271,7 @@ fun Bubble(engine: Engine, m: Message, quoted: Message?, nameOf: (Message) -> St
                 val press = Modifier.combinedClickable(onClick = {}, onLongClick = { menu = true })
                 when {
                     m.deleted -> Box(press.clip(RoundedCornerShape(18.dp)).background(Brush2(Sowa.card)).padding(horizontal = 14.dp, vertical = 9.dp)) {
-                        Text("Wiadomość usunięta", color = Sowa.textMuted, fontStyle = FontStyle.Italic)
+                        Text(stringResource(R.string.message_deleted), color = Sowa.textMuted, fontStyle = FontStyle.Italic)
                     }
                     m.kind == Message.IMAGE -> Column(press) {
                         quoted?.let { Quote(it, nameOf(it), onQuoteTap) }
@@ -287,26 +290,26 @@ fun Bubble(engine: Engine, m: Message, quoted: Message?, nameOf: (Message) -> St
                 }
                 DropdownMenu(menu, { menu = false }) {
                     if (!m.deleted) {
-                        DropdownMenuItem({ Text("Odpowiedz") }, { menu = false; onReply() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, null) })
-                        DropdownMenuItem({ Text("Reaguj") }, { menu = false; onReact() }, leadingIcon = { Icon(Icons.Default.AddReaction, null) })
-                        if (m.kind == Message.TEXT) DropdownMenuItem({ Text("Kopiuj") }, { menu = false; clipboard.setText(AnnotatedString(m.text)) }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) })
-                        if (m.hasAttachment && m.attachmentFile != null) DropdownMenuItem({ Text("Udostępnij") }, { menu = false; openAttachment(ctx, engine, m, share = true) }, leadingIcon = { Icon(Icons.Default.Share, null) })
-                        if (m.isMine && m.kind == Message.TEXT) DropdownMenuItem({ Text("Edytuj") }, { menu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
-                        if (m.isMine) DropdownMenuItem({ Text("Usuń u wszystkich") }, { menu = false; onDeleteAll() }, leadingIcon = { Icon(Icons.Default.DeleteForever, null) })
+                        DropdownMenuItem({ Text(stringResource(R.string.reply)) }, { menu = false; onReply() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, null) })
+                        DropdownMenuItem({ Text(stringResource(R.string.react)) }, { menu = false; onReact() }, leadingIcon = { Icon(Icons.Default.AddReaction, null) })
+                        if (m.kind == Message.TEXT) DropdownMenuItem({ Text(stringResource(R.string.copy)) }, { menu = false; clipboard.setText(AnnotatedString(m.text)) }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) })
+                        if (m.hasAttachment && m.attachmentFile != null) DropdownMenuItem({ Text(stringResource(R.string.share)) }, { menu = false; openAttachment(ctx, engine, m, share = true) }, leadingIcon = { Icon(Icons.Default.Share, null) })
+                        if (m.isMine && m.kind == Message.TEXT) DropdownMenuItem({ Text(stringResource(R.string.edit)) }, { menu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                        if (m.isMine) DropdownMenuItem({ Text(stringResource(R.string.delete_for_all)) }, { menu = false; onDeleteAll() }, leadingIcon = { Icon(Icons.Default.DeleteForever, null) })
                     }
-                    DropdownMenuItem({ Text("Usuń u mnie") }, { menu = false; onDeleteLocal() }, leadingIcon = { Icon(Icons.Default.Delete, null) })
+                    DropdownMenuItem({ Text(stringResource(R.string.delete_for_me)) }, { menu = false; onDeleteLocal() }, leadingIcon = { Icon(Icons.Default.Delete, null) })
                 }
             }
             Reactions(m, engine.accountId, onReactTap)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (m.expiresAt != null) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
                 Text(hhmm(m.sentAt), color = Sowa.textMuted, fontSize = 10.sp)
-                if (m.editedAt != null && !m.deleted) Text(" (edytowano)", color = Sowa.textMuted, fontSize = 10.sp)
+                if (m.editedAt != null && !m.deleted) Text(stringResource(R.string.edited), color = Sowa.textMuted, fontSize = 10.sp)
                 if (m.isMine && !m.deleted) when (m.status) {
                     Message.PENDING -> Icon(Icons.Default.Schedule, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
                     Message.SENT -> Icon(Icons.Default.Check, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
                     Message.DELIVERED -> Icon(Icons.Default.CheckCircle, null, tint = Sowa.cyan, modifier = Modifier.size(10.dp))
-                    else -> Text(" ponów", color = Sowa.warn, fontSize = 10.sp, modifier = Modifier.clickable(onClick = onRetry))
+                    else -> Text(stringResource(R.string.retry), color = Sowa.warn, fontSize = 10.sp, modifier = Modifier.clickable(onClick = onRetry))
                 }
             }
         }
@@ -342,8 +345,8 @@ private fun FileBubble(engine: Engine, m: Message, onOpen: () -> Unit) {
     Row(Modifier.clickable(enabled = size != null, onClick = onOpen), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.Description, null, tint = if (m.isMine) Color.White else Sowa.cyan, modifier = Modifier.size(30.dp)); Spacer(Modifier.width(8.dp))
         Column {
-            Text(m.fileName ?: "plik", color = if (m.isMine) Color.White else MaterialTheme.colorScheme.onSurface, maxLines = 2)
-            Text(if (size == null) (m.text.ifEmpty { "pobieranie…" }) else sizeLabel(size), color = if (m.isMine) Color.White.copy(alpha = 0.8f) else Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+            Text(m.fileName ?: stringResource(R.string.file_lower), color = if (m.isMine) Color.White else MaterialTheme.colorScheme.onSurface, maxLines = 2)
+            Text(if (size == null) (m.text.ifEmpty { stringResource(R.string.downloading) }) else sizeLabel(size), color = if (m.isMine) Color.White.copy(alpha = 0.8f) else Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -368,11 +371,11 @@ private fun AudioBubble(engine: Engine, m: Message) {
     val fg = if (m.isMine) Color.White else Sowa.cyan
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton({ player ?: return@IconButton; if (playing) { player.pause(); playing = false } else { player.start(); playing = true } }, enabled = player != null) {
-            Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pauza" else "Odtwórz", tint = fg)
+            Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(if (playing) R.string.pause else R.string.play), tint = fg)
         }
         Column(Modifier.width(150.dp)) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth(), color = fg, trackColor = fg.copy(alpha = 0.3f))
-            Text(if (player == null) (m.text.ifEmpty { "pobieranie…" }) else (if (playing) durationLabel(pos / 1000.0) + " / " else "🎤 ") + durationLabel(if (m.duration > 0) m.duration else player.duration / 1000.0),
+            Text(if (player == null) (m.text.ifEmpty { stringResource(R.string.downloading) }) else (if (playing) durationLabel(pos / 1000.0) + " / " else "🎤 ") + durationLabel(if (m.duration > 0) m.duration else player.duration / 1000.0),
                 color = if (m.isMine) Color.White.copy(alpha = 0.85f) else Sowa.textMuted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
         }
     }
@@ -394,7 +397,7 @@ private fun RecordButton(recording: Boolean, onStart: () -> Boolean, onStop: (ca
             }
             onStop(cancelled)
         }
-    }, contentAlignment = Alignment.Center) { Icon(Icons.Default.Mic, "Nagraj głosówkę", tint = Color.White) }
+    }, contentAlignment = Alignment.Center) { Icon(Icons.Default.Mic, stringResource(R.string.record_voice), tint = Color.White) }
 }
 
 /** MediaRecorder: AAC mono 32 kb/s w m4a (odtwarzalne na iOS i Androidzie). */
@@ -424,7 +427,7 @@ class VoiceRecorder(private val ctx: android.content.Context) {
 }
 
 private fun readPicked(ctx: android.content.Context, uri: Uri): Picked? = try {
-    var name = "plik"
+    var name = Strings.get(R.string.file_lower)
     ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) name = it.getString(0) ?: name }
     val data = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
     Picked(data, name, ctx.contentResolver.getType(uri))
@@ -440,5 +443,5 @@ fun openAttachment(ctx: android.content.Context, engine: Engine, m: Message, sha
     val mime = m.mime ?: when (m.kind) { Message.IMAGE -> "image/jpeg"; Message.AUDIO -> "audio/mp4"; else -> "application/octet-stream" }
     val i = if (share) Intent(Intent.ACTION_SEND).apply { type = mime; putExtra(Intent.EXTRA_STREAM, uri) } else Intent(Intent.ACTION_VIEW).apply { setDataAndType(uri, mime) }
     i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    try { ctx.startActivity(Intent.createChooser(i, if (share) "Udostępnij" else "Otwórz w")) } catch (e: Exception) { Toast.makeText(ctx, "Brak aplikacji do otwarcia tego pliku.", Toast.LENGTH_LONG).show() }
+    try { ctx.startActivity(Intent.createChooser(i, ctx.getString(if (share) R.string.share else R.string.open_with))) } catch (e: Exception) { Toast.makeText(ctx, ctx.getString(R.string.no_app_for_file), Toast.LENGTH_LONG).show() }
 }

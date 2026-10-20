@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Polski (teksty źródłowe). Klucze 1:1 z values/strings.xml. -->
+<resources>
+    <!-- blokada -->
+    <string name="lock_title">Szept zablokowany</string>
+    <string name="unlock">Odblokuj</string>
+    <string name="unlock_prompt">Odblokuj Szept</string>
+
+    <!-- onboarding -->
+    <string name="tagline">Rozmowy, których nikt poza Wami nie przeczyta.</string>
+    <string name="onb_bullet1">Bez numeru telefonu, e-maila i konta. Twoja tożsamość to klucz wygenerowany na tym telefonie.</string>
+    <string name="onb_bullet2">Szyfrowanie end-to-end protokołem Signal (PQXDH + Double Ratchet, odporność postkwantowa).</string>
+    <string name="onb_bullet3">Serwer nie zna nadawcy ani treści – przechowuje tylko zaszyfrowane koperty do chwili odbioru.</string>
+    <string name="onb_bullet4">Znikające wiadomości, blokada biometryczna, zero kopii w chmurze, zero usług Google.</string>
+    <string name="name_for_contacts_optional">Nazwa dla kontaktów (opcjonalnie)</string>
+    <string name="name_example">np. Adam</string>
+    <string name="advanced">Zaawansowane</string>
+    <string name="server_address">Adres serwera</string>
+    <string name="creating">Tworzę…</string>
+    <string name="create_identity">Utwórz tożsamość</string>
+
+    <!-- lista czatów -->
+    <string name="settings">Ustawienia</string>
+    <string name="conn_online">połączono</string>
+    <string name="conn_connecting">łączenie…</string>
+    <string name="conn_offline">offline</string>
+    <string name="add">Dodaj</string>
+    <string name="add_contact">Dodaj kontakt</string>
+    <string name="new_group">Nowa grupa</string>
+    <string name="empty_title">Nikogo tu jeszcze nie ma</string>
+    <string name="empty_text">Dodaj kontakt, pokazując swój kod QR albo skanując cudzy. Bez numerów, bez listy znajomych na serwerze.</string>
+    <string name="no_messages">Brak wiadomości</string>
+    <string name="you_prefix">"Ty: "</string>
+    <string name="you">Ty</string>
+    <string name="me">Ja</string>
+    <string name="unknown">Nieznany</string>
+    <string name="unknown_short">Nieznany %1$s</string>
+    <string name="contact_short">Kontakt %1$s</string>
+    <plurals name="members">
+        <item quantity="one">%d os.</item>
+        <item quantity="few">%d os.</item>
+        <item quantity="many">%d os.</item>
+        <item quantity="other">%d os.</item>
+    </plurals>
+    <string name="time_now">teraz</string>
+    <string name="time_min">%1$d min</string>
+    <string name="time_hours">%1$d godz.</string>
+    <string name="time_days">%1$d dni</string>
+
+    <!-- dodawanie kontaktu -->
+    <string name="not_szept_code">To nie jest kod Szept.</string>
+    <string name="my_code">Mój kod</string>
+    <string name="scan">Skanuj</string>
+    <string name="qr_code">Kod QR</string>
+    <string name="show_code_hint">Pokaż ten kod osobie, z którą chcesz rozmawiać, albo wyślij link innym kanałem. Kod zawiera Twój identyfikator i klucz publiczny – nic więcej.</string>
+    <string name="copy_link">Kopiuj link</string>
+    <string name="share">Udostępnij</string>
+    <string name="id_label">ID: %1$s</string>
+    <string name="scan_prompt">Zeskanuj kod Szept</string>
+    <string name="scan_qr">Skanuj kod QR</string>
+    <string name="or_paste_link">albo wklej link</string>
+    <string name="invalid_link">Niepoprawny link.</string>
+    <string name="new_contact">Nowy kontakt</string>
+    <string name="contact_name">Nazwa kontaktu</string>
+    <string name="cancel">Anuluj</string>
+
+    <!-- kontakt -->
+    <string name="unavailable">niedostępny</string>
+    <string name="contact">Kontakt</string>
+    <string name="name">Nazwa</string>
+    <string name="safety_number">Numer bezpieczeństwa</string>
+    <string name="safety_hint">Porównaj ten numer z numerem widocznym u kontaktu (osobiście albo głosowo). Jeśli są identyczne, nikt nie podsłuchuje po drodze – także my jako operator serwera.</string>
+    <string name="verified_in_person">Zweryfikowano osobiście</string>
+    <string name="accept_new_key">Zaakceptuj nowy klucz kontaktu</string>
+    <string name="disappearing">Znikające wiadomości</string>
+    <string name="delete_chat_contact">Usuń rozmowę i kontakt</string>
+    <string name="delete_chat_q">Usunąć rozmowę z %1$s?</string>
+    <string name="delete_chat_text">Wiadomości znikną z tego telefonu.</string>
+    <string name="delete">Usuń</string>
+
+    <!-- ustawienia -->
+    <string name="section_me">Ja</string>
+    <string name="name_for_contacts">Nazwa dla kontaktów</string>
+    <string name="my_id">Mój identyfikator: %1$s</string>
+    <string name="one_time_keys">Klucze jednorazowe na serwerze: %1$s</string>
+    <string name="security">Bezpieczeństwo</string>
+    <string name="biometric_lock">Blokada biometryczna / kodem</string>
+    <string name="listen_bg">Nasłuch w tle</string>
+    <string name="listen_bg_hint">Stałe połączenie z Twoim serwerem zamiast usług Google. Dostajesz powiadomienie „Nowa wiadomość” bez treści.</string>
+    <string name="server">Serwer</string>
+    <string name="address">Adres</string>
+    <string name="save_and_check">Zapisz i sprawdź</string>
+    <string name="server_sees">Serwer widzi tylko: Twój losowy identyfikator, klucze publiczne i zaszyfrowane koperty do chwili odbioru. Nie zna nadawcy, treści ani Twoich kontaktów.</string>
+    <string name="who_knows">Co wie kto</string>
+    <string name="wk1a">Treść wiadomości</string>
+    <string name="wk1b">tylko Ty i odbiorca</string>
+    <string name="wk2a">Kto z kim pisze</string>
+    <string name="wk2b">nikt (koperta HPKE, wysyłka anonimowa)</string>
+    <string name="wk3a">Kiedy odbierasz</string>
+    <string name="wk3b">serwer (konieczne do doręczenia)</string>
+    <string name="wk4a">Adres IP</string>
+    <string name="wk4b">Cloudflare i serwer na czas połączenia, nie zapisywany</string>
+    <string name="wk5a">Google</string>
+    <string name="wk5b">nic – brak Play Services, własny kanał powiadomień</string>
+    <string name="delete_account_all">Usuń konto i wszystkie dane</string>
+    <string name="about_line">Szept %1$s · libsignal (AGPL) · kod źródłowy otwarty</string>
+    <string name="delete_account_q">Usunąć konto?</string>
+    <string name="delete_account_text">Klucze, kontakty i wiadomości znikną bezpowrotnie z tego telefonu i z serwera.</string>
+    <string name="delete_everything">Usuń wszystko</string>
+
+    <!-- grupy -->
+    <string name="group_name">Nazwa grupy</string>
+    <string name="group_name_example">np. Ekipa</string>
+    <string name="group_hint">Grupa istnieje tylko w telefonach członków. Serwer nie wie, kto w niej jest – każda wiadomość jest szyfrowana osobno do każdej osoby.</string>
+    <string name="members_n">Członkowie (%1$d)</string>
+    <string name="create_group">Utwórz grupę</string>
+    <string name="group">Grupa</string>
+    <string name="save_name_sends">Zapisz nazwę (wyśle do członków)</string>
+    <string name="group_id">ID grupy: %1$s</string>
+    <string name="add_people">Dodaj osoby</string>
+    <string name="member_key_changed">klucz się zmienił – sprawdź</string>
+    <string name="member_verified">zweryfikowano osobiście</string>
+    <string name="member_unverified_group">niezweryfikowany (dodany przez grupę)</string>
+    <string name="member_unverified">niezweryfikowany</string>
+    <string name="leave_group">Opuść grupę</string>
+    <string name="leave_group_q">Opuścić grupę „%1$s”?</string>
+    <string name="leave_group_text">Pozostali dostaną informację, a wiadomości grupy znikną z tego telefonu.</string>
+    <string name="leave">Opuść</string>
+
+    <!-- znikające wiadomości -->
+    <string name="dur_off">Wyłączone</string>
+    <string name="dur_30s">30 sekund</string>
+    <string name="dur_5m">5 minut</string>
+    <string name="dur_1h">1 godzina</string>
+    <string name="dur_1d">1 dzień</string>
+    <string name="dur_1w">1 tydzień</string>
+    <string name="dur_seconds">%1$d s</string>
+
+    <!-- czat -->
+    <string name="info_verify">Informacje i weryfikacja</string>
+    <string name="group_info">Informacje o grupie</string>
+    <string name="banner_key_changed">Klucz bezpieczeństwa tego kontaktu się zmienił. Potwierdź numer bezpieczeństwa.</string>
+    <string name="banner_first_contact">Ten kontakt napisał pierwszy. Zweryfikuj numer bezpieczeństwa, zanim mu zaufasz.</string>
+    <string name="check">Sprawdź</string>
+    <string name="file_read_failed">Nie udało się odczytać pliku.</string>
+    <string name="file_too_big">Plik jest za duży (limit %1$d MB).</string>
+    <string name="mic_denied">Bez dostępu do mikrofonu nie nagram głosówki.</string>
+    <string name="back">Wstecz</string>
+    <string name="reply_to">Odpowiedź do %1$s</string>
+    <string name="editing_message">Edytujesz wiadomość</string>
+    <string name="recording">Nagrywanie %1$s</string>
+    <string name="slide_to_cancel">◀ przesuń, aby anulować</string>
+    <string name="attachment">Załącznik</string>
+    <string name="photo">Zdjęcie</string>
+    <string name="file">Plik</string>
+    <string name="file_lower">plik</string>
+    <string name="new_text_hint">Nowa treść…</string>
+    <string name="compose_hint">Szepnij coś…</string>
+    <string name="recording_too_short">Za krótkie nagranie.</string>
+    <string name="send">Wyślij</string>
+    <string name="reaction">Reakcja</string>
+    <string name="any_emoji">dowolne emoji</string>
+    <string name="ok">OK</string>
+    <string name="remove_my_reaction">Cofnij moją reakcję (%1$s)</string>
+    <string name="message_deleted">Wiadomość usunięta</string>
+    <string name="reply">Odpowiedz</string>
+    <string name="react">Reaguj</string>
+    <string name="copy">Kopiuj</string>
+    <string name="edit">Edytuj</string>
+    <string name="delete_for_all">Usuń u wszystkich</string>
+    <string name="delete_for_me">Usuń u mnie</string>
+    <string name="edited">" (edytowano)"</string>
+    <string name="retry">" ponów"</string>
+    <string name="downloading">pobieranie…</string>
+    <string name="pause">Pauza</string>
+    <string name="play">Odtwórz</string>
+    <string name="record_voice">Nagraj głosówkę</string>
+    <string name="open_with">Otwórz w</string>
+    <string name="no_app_for_file">Brak aplikacji do otwarcia tego pliku.</string>
+    <string name="summary_photo">📷 Zdjęcie</string>
+    <string name="summary_file">📎 %1$s</string>
+    <string name="summary_voice">🎤 Głosówka %1$s</string>
+
+    <!-- silnik / protokół -->
+    <string name="key_mismatch">Klucz tożsamości kontaktu nie zgadza się z zapisanym.</string>
+    <string name="disappearing_set">Znikające wiadomości: %1$s</string>
+    <string name="disappearing_off">Znikające wiadomości wyłączone</string>
+    <string name="not_registered">Najpierw utwórz tożsamość.</string>
+    <string name="note_created_group">Utworzyłeś(aś) grupę „%1$s”</string>
+    <string name="note_renamed_group">Zmieniłeś(aś) nazwę grupy na „%1$s”</string>
+    <string name="note_added">Dodałeś(aś): %1$s</string>
+    <string name="note_added_you">%1$s dodał(a) Cię do grupy „%2$s”</string>
+    <string name="note_changed_group">%1$s zmienił(a) grupę („%2$s”, %3$s)</string>
+    <string name="note_left">%1$s opuścił(a) grupę</string>
+    <string name="note_timer_set">%1$s: znikające wiadomości %2$s</string>
+    <string name="note_timer_off">%1$s wyłączył(a) znikające wiadomości</string>
+    <string name="attachment_failed">⚠️ Nie udało się pobrać załącznika</string>
+    <string name="key_changed_accept">Klucz kontaktu się zmienił – zaakceptuj go w informacjach o kontakcie.</string>
+    <string name="decrypt_failed">Nie udało się odszyfrować wiadomości: %1$s</string>
+    <string name="server_error">Serwer: %1$d %2$s</string>
+    <string name="bad_envelope">Nieczytelna koperta.</string>
+
+    <!-- powiadomienia / usługa -->
+    <string name="ch_messages">Nowe wiadomości</string>
+    <string name="ch_listen">Nasłuch w tle</string>
+    <string name="new_message">Nowa wiadomość</string>
+    <string name="listening_title">Szept nasłuchuje</string>
+    <string name="listening_text">Połączenie z Twoim serwerem, bez usług Google</string>
+</resources>

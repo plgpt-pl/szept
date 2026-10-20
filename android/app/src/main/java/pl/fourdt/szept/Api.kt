@@ -25,14 +25,14 @@ class SzeptApi(@Volatile var baseUrl: String, @Volatile var token: String?) {
 
     private fun req(method: String, path: String, body: String? = null, bytes: ByteArray? = null, auth: Boolean): Request {
         val b = Request.Builder().url(baseUrl.trimEnd('/') + "/" + path)
-        if (auth) b.header("Authorization", "Bearer " + (token ?: throw SzeptException("Najpierw utwórz tożsamość.")))
+        if (auth) b.header("Authorization", "Bearer " + (token ?: throw SzeptException(Strings.get(R.string.not_registered))))
         val rb = when { body != null -> body.toRequestBody(JSON); bytes != null -> bytes.toRequestBody(BIN); method == "GET" -> null; else -> ByteArray(0).toRequestBody(null) }
         return b.method(method, rb).build()
     }
 
     private fun send(r: Request): ByteArray = client.newCall(r).execute().use { resp ->
         val data = resp.body?.bytes() ?: ByteArray(0)
-        if (!resp.isSuccessful) throw SzeptException("Serwer: ${resp.code} ${String(data).take(120)}")
+        if (!resp.isSuccessful) throw SzeptException(Strings.get(R.string.server_error, resp.code, String(data).take(120)))
         data
     }
     private inline fun <reified T> call(method: String, path: String, body: String? = null, auth: Boolean = true): T =
@@ -55,6 +55,6 @@ class SzeptApi(@Volatile var baseUrl: String, @Volatile var token: String?) {
 
     fun webSocket(listener: WebSocketListener): WebSocket {
         val url = baseUrl.trimEnd('/').replaceFirst("http", "ws") + "/v1/ws"
-        return client.newWebSocket(Request.Builder().url(url).header("Authorization", "Bearer " + (token ?: throw SzeptException("Najpierw utwórz tożsamość."))).build(), listener)
+        return client.newWebSocket(Request.Builder().url(url).header("Authorization", "Bearer " + (token ?: throw SzeptException(Strings.get(R.string.not_registered)))).build(), listener)
     }
 }

@@ -36,14 +36,23 @@ object Config {
 
 enum class Connection { OFFLINE, CONNECTING, ONLINE }
 
+/** Teksty dla kodu poza Compose (Engine, protokół, API, powiadomienia). Context ustawia Engine / SzeptApp. */
+object Strings {
+    @Volatile var ctx: Context? = null
+    fun get(id: Int, vararg args: Any): String = ctx?.getString(id, *args) ?: "[$id]"
+    fun plural(id: Int, n: Int): String = ctx?.resources?.getQuantityString(id, n, n) ?: "$n"
+}
+
 object Durations {
-    val options = listOf(0 to "Wyłączone", 30 to "30 sekund", 300 to "5 minut", 3600 to "1 godzina", 86400 to "1 dzień", 604800 to "1 tydzień")
-    fun label(s: Int) = options.firstOrNull { it.first == s }?.second ?: "$s s"
+    /** sekundy → id zasobu z etykietą */
+    val options = listOf(0 to R.string.dur_off, 30 to R.string.dur_30s, 300 to R.string.dur_5m, 3600 to R.string.dur_1h, 86400 to R.string.dur_1d, 604800 to R.string.dur_1w)
+    fun label(s: Int) = options.firstOrNull { it.first == s }?.let { Strings.get(it.second) } ?: Strings.get(R.string.dur_seconds, s)
 }
 
 /** Serce apki (odpowiednik Engine z iOS): rejestracja, wysyłka/odbiór, WebSocket, znikające wiadomości. */
 class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir, "keys"), val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
              private val prefsName: String = "szept", dbName: String = "szept.db") {
+    init { Strings.ctx = app.applicationContext }
     val db = Db(app, dbName)
     val store = SignalStore(keysDir)
     private val prefs = app.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -156,11 +165,11 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     // --- kontakty ---
     fun addContact(link: ContactLink, name: String?): Contact {
         db.contact(link.accountId)?.let { existing ->
-            if (!existing.identityKey.contentEquals(link.identityKey)) throw SzeptException("Klucz tożsamości kontaktu nie zgadza się z zapisanym.")
+            if (!existing.identityKey.contentEquals(link.identityKey)) throw SzeptException(Strings.get(R.string.key_mismatch))
             if (!name.isNullOrBlank()) { existing.name = name; db.save(existing) }
             return existing
         }
-        val c = Contact(link.accountId, name?.takeIf { it.isNotBlank() } ?: link.name ?: "Kontakt ${link.accountId.take(6)}", link.identityKey)
+        val c = Contact(link.accountId, name?.takeIf { it.isNotBlank() } ?: link.name ?: Strings.get(R.string.contact_short, link.accountId.take(6)), link.identityKey)
         store.pinIdentity(IdentityKey(link.identityKey), SzeptProtocol.address(link.accountId))
         db.save(c)
         return c
@@ -217,7 +226,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     /** Załącznik dowolnego rodzaju: zapis lokalny, szyfrowanie, upload, wysyłka. `data` to gotowe bajty (JPEG / plik / m4a). */
     private suspend fun sendBlob(data: ByteArray, kind: String, t: Target, w: Int = 0, h: Int = 0, fn: String? = null, mime: String? = null, dur: Double = 0.0,
                                  replyTo: String? = null, id: String = UUID.randomUUID().toString(), localFile: String? = null) = withContext(Dispatchers.IO) {
-        if (data.size > Config.MAX_FILE) throw SzeptException("Plik jest za duży (limit ${Config.MAX_FILE / 1024 / 1024} MB).")
+        if (data.size > Config.MAX_FILE) throw SzeptException(Strings.get(R.string.file_too_big, Config.MAX_FILE / 1024 / 1024))
         val m = t.newMessage(id, "", kind, System.currentTimeMillis(), replyTo).apply {
             attW = w; attH = h; fileName = fn; this.mime = mime; duration = dur
             attachmentFile = localFile ?: saveMedia(data, extensionFor(kind, fn))
@@ -291,7 +300,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
 
     suspend fun setDisappear(seconds: Int, c: Contact) = withContext(Dispatchers.IO) {
         c.disappearAfter = seconds; db.save(c)
-        db.save(Message(UUID.randomUUID().toString(), c.id, if (seconds > 0) "Znikające wiadomości: ${Durations.label(seconds)}" else "Znikające wiadomości wyłączone", true, System.currentTimeMillis(), Message.SENT))
+        db.save(Message(UUID.randomUUID().toString(), c.id, if (seconds > 0) Strings.get(R.string.disappearing_set, Durations.label(seconds)) else Strings.get(R.string.disappearing_off), true, System.currentTimeMillis(), Message.SENT))
         try { deliver(MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "timer", expire = seconds), c) } catch (e: Exception) { lastError.value = e.message }
     }
 
@@ -305,7 +314,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
 
     /** Pełny stan grupy do `op: set` – lista członków ŁĄCZNIE ze mną. */
     private fun setContent(g: Group): MessageContent {
-        val me = Member(accountId ?: throw SzeptException("Najpierw utwórz tożsamość."), proto.identityKey.serialize().b64(), displayName.ifEmpty { null })
+        val me = Member(accountId ?: throw SzeptException(Strings.get(R.string.not_registered)), proto.identityKey.serialize().b64(), displayName.ifEmpty { null })
         val others = g.members.mapNotNull { id -> db.contact(id)?.let { Member(it.id, it.identityKey.b64(), it.name) } }
         return MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "group", g = g.id, gname = g.name, members = others + me, op = "set")
     }
@@ -327,9 +336,9 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     }
 
     suspend fun createGroup(name: String, members: List<Contact>): Group = withContext(Dispatchers.IO) {
-        val g = Group(UUID.randomUUID().toString().uppercase(), name.trim().ifEmpty { "Grupa" }, members.map { it.id }.distinct())
+        val g = Group(UUID.randomUUID().toString().uppercase(), name.trim().ifEmpty { Strings.get(R.string.group) }, members.map { it.id }.distinct())
         db.save(g)
-        note(g, "Utworzyłeś(aś) grupę „${g.name}”", true)
+        note(g, Strings.get(R.string.note_created_group, g.name), true)
         deliverToGroup(setContent(g), g)
         g
     }
@@ -337,7 +346,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     suspend fun renameGroup(g: Group, name: String) = withContext(Dispatchers.IO) {
         val n = name.trim(); if (n.isEmpty() || n == g.name) return@withContext
         g.name = n; g.lastActivity = System.currentTimeMillis(); db.save(g)
-        note(g, "Zmieniłeś(aś) nazwę grupy na „$n”", true)
+        note(g, Strings.get(R.string.note_renamed_group, n), true)
         deliverToGroup(setContent(g), g)
     }
 
@@ -345,7 +354,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         val new = contacts.map { it.id }.filter { it !in g.members && it != accountId }.distinct()
         if (new.isEmpty()) return@withContext
         g.members = g.members + new; g.lastActivity = System.currentTimeMillis(); db.save(g)
-        note(g, "Dodałeś(aś): " + contacts.filter { it.id in new }.joinToString { it.name }, true)
+        note(g, Strings.get(R.string.note_added, contacts.filter { it.id in new }.joinToString { it.name }), true)
         deliverToGroup(setContent(g), g)
     }
 
@@ -357,7 +366,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
 
     suspend fun setDisappear(seconds: Int, g: Group) = withContext(Dispatchers.IO) {
         g.disappearAfter = seconds; db.save(g)
-        note(g, if (seconds > 0) "Znikające wiadomości: ${Durations.label(seconds)}" else "Znikające wiadomości wyłączone", true)
+        note(g, if (seconds > 0) Strings.get(R.string.disappearing_set, Durations.label(seconds)) else Strings.get(R.string.disappearing_off), true)
         deliverToGroup(MessageContent(UUID.randomUUID().toString(), System.currentTimeMillis() / 1000.0, "timer", expire = seconds, g = g.id), g)
     }
 
@@ -368,7 +377,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         for (m in members) {
             if (m.i == accountId || db.contact(m.i) != null) continue
             val key = try { m.k.unb64().also { IdentityKey(it) } } catch (e: Exception) { continue }
-            val c = Contact(m.i, m.n?.takeIf { it.isNotBlank() } ?: "Kontakt ${m.i.take(6)}", key, fromUnknown = true)
+            val c = Contact(m.i, m.n?.takeIf { it.isNotBlank() } ?: Strings.get(R.string.contact_short, m.i.take(6)), key, fromUnknown = true)
             try { store.pinIdentity(IdentityKey(key), SzeptProtocol.address(m.i)) } catch (_: Exception) {}
             db.save(c)
         }
@@ -385,18 +394,18 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
                     if (existing != null && c.id !in existing.members) return          // nie-członek nie zmienia znanej grupy
                     absorbMembers(members)
                     val others = members.map { it.i }.filter { it != accountId }.distinct()
-                    val g = existing ?: Group(gid, content.gname ?: "Grupa", others)
+                    val g = existing ?: Group(gid, content.gname ?: Strings.get(R.string.group), others)
                     val wasNew = existing == null
                     g.members = others; content.gname?.let { g.name = it }; g.lastActivity = now; if (wasNew) g.unread++
                     db.save(g)
-                    note(g, if (wasNew) "${c.name} dodał(a) Cię do grupy „${g.name}”" else "${c.name} zmienił(a) grupę („${g.name}”, ${others.size + 1} os.)", false)
+                    note(g, if (wasNew) Strings.get(R.string.note_added_you, c.name, g.name) else Strings.get(R.string.note_changed_group, c.name, g.name, Strings.plural(R.plurals.members, others.size + 1)), false)
                     if (wasNew) onIncomingGroup?.invoke(g)
                 }
                 "leave" -> {
                     val g = existing ?: return
                     if (c.id !in g.members) return
                     g.members = g.members - c.id; g.lastActivity = now; db.save(g)
-                    note(g, "${c.name} opuścił(a) grupę", false)
+                    note(g, Strings.get(R.string.note_left, c.name), false)
                 }
             }
             "text" -> {
@@ -424,7 +433,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
             "timer" -> {
                 val g = existing ?: return; if (c.id !in g.members) return
                 g.disappearAfter = content.expire ?: 0; g.lastActivity = now; db.save(g)
-                note(g, if (g.disappearAfter > 0) "${c.name}: znikające wiadomości ${Durations.label(g.disappearAfter)}" else "${c.name} wyłączył(a) znikające wiadomości", false)
+                note(g, if (g.disappearAfter > 0) Strings.get(R.string.note_timer_set, c.name, Durations.label(g.disappearAfter)) else Strings.get(R.string.note_timer_off, c.name), false)
             }
         }
     }
@@ -455,7 +464,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
 
     private fun download(m: Message, att: Attachment) {
         try { m.attachmentFile = saveMedia(SzeptProtocol.decryptAttachment(api.downloadAttachment(att.id), att.key.unb64(), att.nonce.unb64()), extensionFor(m.kind, m.fileName)) }
-        catch (e: Exception) { m.text = "⚠️ Nie udało się pobrać załącznika" }
+        catch (e: Exception) { m.text = Strings.get(R.string.attachment_failed) }
         db.save(m)
     }
 
@@ -463,15 +472,15 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     @Synchronized
     fun handleIncoming(sealed: ByteArray) {
         val opened = try { proto.open(sealed) } catch (e: Exception) {
-            lastError.value = if (e is UntrustedIdentityException) "Klucz kontaktu się zmienił – zaakceptuj go w informacjach o kontakcie." else "Nie udało się odszyfrować wiadomości: ${e.message}"
+            lastError.value = if (e is UntrustedIdentityException) Strings.get(R.string.key_changed_accept) else Strings.get(R.string.decrypt_failed, e.message ?: "")
             return
         }
         val content = try { json.decodeFromString(MessageContent.serializer(), String(opened.plaintext)) } catch (e: Exception) { return }
         val identity = opened.senderIdentity.serialize()
         val c = db.contact(opened.sender)?.also { known ->
             if (!known.identityKey.contentEquals(identity)) { known.identityKey = identity; known.identityChanged = true; known.verified = false }
-        } ?: Contact(opened.sender, content.name ?: "Nieznany ${opened.sender.take(6)}", identity, fromUnknown = true)
-        if (!content.name.isNullOrEmpty() && c.fromUnknown && (c.name.startsWith("Nieznany") || c.name.startsWith("Kontakt "))) c.name = content.name
+        } ?: Contact(opened.sender, content.name ?: Strings.get(R.string.unknown_short, opened.sender.take(6)), identity, fromUnknown = true)
+        if (!content.name.isNullOrEmpty() && c.fromUnknown && c.name in setOf(Strings.get(R.string.unknown_short, c.id.take(6)), Strings.get(R.string.contact_short, c.id.take(6)))) c.name = content.name
         val now = System.currentTimeMillis()
         if (content.g != null) { db.save(c); handleGroupContent(content, c, now); return }
         when (content.kind) {
@@ -496,7 +505,7 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
             "receipt" -> content.ref?.let { db.message(it) }?.let { it.status = Message.DELIVERED; db.save(it) }
             "timer" -> {
                 c.disappearAfter = content.expire ?: 0
-                db.save(Message(UUID.randomUUID().toString(), c.id, if (c.disappearAfter > 0) "${c.name}: znikające wiadomości ${Durations.label(c.disappearAfter)}" else "${c.name} wyłączył(a) znikające wiadomości", false, now, Message.DELIVERED))
+                db.save(Message(UUID.randomUUID().toString(), c.id, if (c.disappearAfter > 0) Strings.get(R.string.note_timer_set, c.name, Durations.label(c.disappearAfter)) else Strings.get(R.string.note_timer_off, c.name), false, now, Message.DELIVERED))
             }
             // nieznany rodzaj (nowsza wersja apki po drugiej stronie) – ignorujemy
         }
