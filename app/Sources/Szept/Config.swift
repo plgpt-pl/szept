@@ -7,4 +7,5 @@ enum Config {
     static let preKeyBatch = 40
     static let preKeyLowWater = 10
     static let maxImageSide: CGFloat = 1600
+    static let maxFileBytes = 32 * 1024 * 1024      // jak MAX_ATT na serwerze
 }

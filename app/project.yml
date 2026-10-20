@@ -7,8 +7,8 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "0.2.0"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "4"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: R8M2B5S4G3
     CODE_SIGN_STYLE: Automatic
@@ -46,8 +46,12 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: pl.plgpt.szept
             CFBundleURLSchemes: [szept]
-        UIBackgroundModes: [fetch]
+        UIBackgroundModes: [fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [pl.plgpt.szept.refresh]
+    entitlements:
+      path: Szept.entitlements
+      properties:
+        aps-environment: development   # Xcode zamienia na production przy eksporcie do App Store/TestFlight
     dependencies:
       - target: LibSignalClient
         embed: false
@@ -62,6 +66,7 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: "Skanowanie kodu QR kontaktu i zdjęcia do wysłania."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Wybór zdjęcia do wysłania (zaszyfrowanego)."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "Odblokowanie aplikacji Szept."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Nagrywanie wiadomości głosowych (szyfrowanych)."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

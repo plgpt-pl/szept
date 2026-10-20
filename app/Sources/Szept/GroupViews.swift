@@ -184,7 +184,7 @@ struct GroupRow: View {
     private var preview: String {
         guard let last = group.messages.max(by: { $0.sentAt < $1.sentAt }) else { return "Brak wiadomości" }
         let who = last.isMine ? "Ty" : (last.senderId.map { engine.senderName($0) } ?? "")
-        let body = (last.attachmentFile != nil || last.attachmentW > 0) ? "📷 Zdjęcie" : last.text
+        let body = last.summary
         return who.isEmpty ? body : "\(who): \(body)"
     }
 }

@@ -126,8 +126,7 @@ struct ContactRow: View {
     }
     private var preview: String {
         guard let last = contact.messages.max(by: { $0.sentAt < $1.sentAt }) else { return "Brak wiadomości" }
-        if last.attachmentFile != nil || last.attachmentW > 0 { return (last.isMine ? "Ty: " : "") + "📷 Zdjęcie" }
-        return (last.isMine ? "Ty: " : "") + last.text
+        return (last.isMine ? "Ty: " : "") + last.summary
     }
 }
 

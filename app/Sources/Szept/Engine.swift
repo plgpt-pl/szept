@@ -85,6 +85,7 @@ final class Engine {
         try? await api.deleteAccount()
         Keychain.wipe()
         UserDefaults.standard.removeObject(forKey: "display_name")
+        UserDefaults.standard.removeObject(forKey: "push_token")
         try? context.delete(model: Message.self)
         try? context.delete(model: Contact.self)
         try? context.delete(model: ChatGroup.self)
@@ -213,7 +214,7 @@ final class Engine {
         try proto.processBundle(b, pinnedIdentity: c.identityKey)
     }
 
-    private func deliver(_ content: MessageContent, to c: Contact) async throws {
+    func deliver(_ content: MessageContent, to c: Contact) async throws {
         try await ensureSession(c)
         var content = content
         if !displayName.isEmpty { content.name = displayName }
@@ -221,58 +222,176 @@ final class Engine {
         try await api.deliver([sealed], to: c.id)
     }
 
-    func sendText(_ text: String, to c: Contact) async {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let m = Message(contact: c, text: trimmed, isMine: true)
-        if c.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(c.disappearAfter)) }
-        c.lastActivity = Date()
-        context.insert(m); try? context.save()
-        await send(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: trimmed,
-                                                 expire: c.disappearAfter > 0 ? c.disappearAfter : nil), to: c)
+    // MARK: wysyłanie (wspólne dla 1:1 i grup – docs/WERSJA-0.3.md)
+
+    func target(of m: Message) -> ChatTarget? {
+        if let g = m.group { return .group(g) }
+        if let c = m.contact { return .contact(c) }
+        return nil
     }
 
-    func sendImage(_ image: UIImage, to c: Contact) async {
+    private func touch(_ t: ChatTarget) {
+        switch t { case .contact(let c): c.lastActivity = Date(); case .group(let g): g.lastActivity = Date() }
+    }
+
+    private func newMessage(for t: ChatTarget, text: String, replyTo: String?) -> Message {
+        let m: Message
+        switch t {
+        case .contact(let c): m = Message(contact: c, text: text, isMine: true)
+        case .group(let g): m = Message(group: g, text: text, isMine: true)
+        }
+        m.replyToId = replyTo
+        if t.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(t.disappearAfter)) }
+        touch(t)
+        context.insert(m)
+        return m
+    }
+
+    private func baseContent(for m: Message, kind: MessageContent.Kind, in t: ChatTarget) -> MessageContent {
+        var c = MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: kind, expire: t.disappearAfter > 0 ? t.disappearAfter : nil)
+        if case .group(let g) = t { c.g = g.id }
+        c.r = m.replyToId
+        return c
+    }
+
+    /// Dostarcza treść do celu: do kontaktu albo do każdego członka grupy.
+    func deliver(_ content: MessageContent, to t: ChatTarget) async throws {
+        switch t {
+        case .contact(let c): try await deliver(content, to: c)
+        case .group(let g): try await deliverGroup(content, to: g)
+        }
+    }
+
+    private func send(message m: Message, content: MessageContent, to t: ChatTarget) async {
+        do { try await deliver(content, to: t); m.status = .sent }
+        catch { m.status = .failed; lastError = error.localizedDescription }
+        try? context.save()
+    }
+
+    func sendText(_ text: String, to t: ChatTarget, replyTo: String? = nil) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let m = newMessage(for: t, text: trimmed, replyTo: replyTo); try? context.save()
+        var c = baseContent(for: m, kind: .text, in: t); c.text = trimmed
+        await send(message: m, content: c, to: t)
+    }
+
+    func sendImage(_ image: UIImage, to t: ChatTarget, replyTo: String? = nil) async {
         guard let (jpeg, w, h) = ImageTools.prepare(image) else { return }
-        let m = Message(contact: c, text: "", isMine: true)
-        m.attachmentW = w; m.attachmentH = h
-        m.attachmentFile = saveMedia(jpeg)
-        if c.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(c.disappearAfter)) }
-        c.lastActivity = Date()
-        context.insert(m); try? context.save()
+        let m = newMessage(for: t, text: "", replyTo: replyTo)
+        m.kind = .image; m.attachmentW = w; m.attachmentH = h; m.attachmentFile = saveMediaFile(jpeg, ext: "jpg")
+        try? context.save()
+        await uploadAndSend(m, data: jpeg, to: t)
+    }
+
+    /// Dowolny plik (≤ Config.maxFileBytes). `url` może pochodzić z fileImporter (zasób z ograniczonym dostępem).
+    func sendFile(_ url: URL, to t: ChatTarget, replyTo: String? = nil) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { lastError = "Nie udało się odczytać pliku"; return }
+        guard data.count <= Config.maxFileBytes else { lastError = "Plik jest za duży (limit \(Config.maxFileBytes / 1_048_576) MB)"; return }
+        let m = newMessage(for: t, text: "", replyTo: replyTo)
+        m.kind = .file; m.fileName = url.lastPathComponent; m.mimeType = MimeTypes.mime(for: url.pathExtension)
+        m.attachmentFile = saveMediaFile(data, ext: url.pathExtension)
+        try? context.save()
+        await uploadAndSend(m, data: data, to: t)
+    }
+
+    /// Wiadomość głosowa: plik m4a (AAC) nagrany w apce.
+    func sendAudio(_ url: URL, duration: Double, to t: ChatTarget, replyTo: String? = nil) async {
+        guard let data = try? Data(contentsOf: url), !data.isEmpty else { return }
+        let m = newMessage(for: t, text: "", replyTo: replyTo)
+        m.kind = .audio; m.duration = duration; m.mimeType = "audio/mp4"; m.attachmentFile = saveMediaFile(data, ext: "m4a")
+        try? context.save()
+        await uploadAndSend(m, data: data, to: t)
+    }
+
+    /// Szyfruje, wgrywa i wysyła treść z załącznikiem (image/file/audio); używane też przy ponawianiu.
+    private func uploadAndSend(_ m: Message, data: Data, to t: ChatTarget) async {
         do {
-            let (ct, key) = try SzeptProtocol.encryptAttachment(jpeg)
+            let (ct, key) = try SzeptProtocol.encryptAttachment(data)
             let id = try await api.uploadAttachment(ct)
-            let att = MessageContent.Attachment(id: id, key: key.key, nonce: key.nonce, size: ct.count, w: w, h: h)
-            await send(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .image, att: att,
-                                                     expire: c.disappearAfter > 0 ? c.disappearAfter : nil), to: c)
+            var c = baseContent(for: m, kind: m.kind, in: t)
+            c.att = .init(id: id, key: key.key, nonce: key.nonce, size: ct.count, w: m.attachmentW, h: m.attachmentH)
+            if m.kind == .file { c.fn = m.fileName; c.mime = m.mimeType }
+            if m.kind == .audio { c.dur = m.duration; c.mime = "audio/mp4" }
+            await send(message: m, content: c, to: t)
         } catch {
             m.status = .failed; lastError = error.localizedDescription; try? context.save()
         }
     }
 
     func retry(_ m: Message) async {
-        if let g = m.group { await retryGroup(m, group: g); return }
-        guard let c = m.contact else { return }
+        guard let t = target(of: m) else { return }
         m.status = .pending; try? context.save()
-        if let f = m.attachmentFile, let data = try? Data(contentsOf: Storage.media.appendingPathComponent(f)), let img = UIImage(data: data) {
-            context.delete(m); try? context.save()
-            await sendImage(img, to: c)
+        if m.hasAttachment, let f = m.attachmentFile, let data = try? Data(contentsOf: Storage.media.appendingPathComponent(f)) {
+            if m.kind == .text { m.kind = .image }   // zdjęcie zapisane przed 0.3
+            await uploadAndSend(m, data: data, to: t)
         } else {
-            await send(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: m.text,
-                                                     expire: c.disappearAfter > 0 ? c.disappearAfter : nil), to: c)
+            var c = baseContent(for: m, kind: .text, in: t); c.text = m.text
+            await send(message: m, content: c, to: t)
         }
     }
 
-    private func send(message m: Message, content: MessageContent, to c: Contact) async {
-        do {
-            try await deliver(content, to: c)
-            m.status = .sent
-        } catch {
-            m.status = .failed
-            lastError = error.localizedDescription
-        }
-        try? context.save()
+    // zgodność ze starszymi wywołaniami
+    func sendText(_ text: String, to c: Contact) async { await sendText(text, to: .contact(c)) }
+    func sendImage(_ image: UIImage, to c: Contact) async { await sendImage(image, to: .contact(c)) }
+    func sendText(_ text: String, to g: ChatGroup) async { await sendText(text, to: .group(g)) }
+    func sendImage(_ image: UIImage, to g: ChatGroup) async { await sendImage(image, to: .group(g)) }
+
+    // MARK: reakcje, edycja, usuwanie (docs/WERSJA-0.3.md)
+
+    private func control(_ kind: MessageContent.Kind, ref: String, text: String? = nil, op: String? = nil, in t: ChatTarget) -> MessageContent {
+        var c = MessageContent(id: UUID().uuidString, ts: Date().timeIntervalSince1970, kind: kind, text: text, ref: ref, op: op)
+        if case .group(let g) = t { c.g = g.id }
+        return c
+    }
+
+    /// Ustawia (emoji) albo zdejmuje (nil) moją reakcję na wiadomość i rozsyła ją.
+    func react(_ emoji: String?, to m: Message) async {
+        guard let t = target(of: m), let me = accountId, !m.wasDeleted else { return }
+        var r = m.reactions
+        if let emoji, !emoji.isEmpty { r[me] = String(emoji.prefix(8)) } else { r.removeValue(forKey: me) }
+        m.reactions = r; try? context.save()
+        try? await deliver(control(.reaction, ref: m.id, text: emoji, op: emoji == nil ? "remove" : "set", in: t), to: t)
+    }
+
+    func myReaction(on m: Message) -> String? { accountId.flatMap { m.reactions[$0] } }
+
+    /// Edycja własnej wiadomości tekstowej.
+    func edit(_ m: Message, text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard m.isMine, m.kind == .text, !m.wasDeleted, !trimmed.isEmpty, trimmed != m.text, let t = target(of: m) else { return }
+        m.text = trimmed; m.editedAt = Date(); try? context.save()
+        do { try await deliver(control(.edit, ref: m.id, text: trimmed, in: t), to: t) } catch { lastError = error.localizedDescription }
+    }
+
+    /// Usunięcie własnej wiadomości u wszystkich: lokalnie zostaje placeholder, odbiorcy robią to samo.
+    func deleteForEveryone(_ m: Message) async {
+        guard m.isMine, let t = target(of: m) else { return }
+        markDeleted(m); try? context.save()
+        try? await deliver(control(.delete, ref: m.id, in: t), to: t)
+    }
+
+    func deleteLocally(_ m: Message) { removeMedia(m); context.delete(m); try? context.save() }
+
+    private func markDeleted(_ m: Message) {
+        removeMedia(m)
+        m.attachmentFile = nil; m.attachmentW = 0; m.attachmentH = 0; m.fileName = nil; m.mimeType = nil; m.duration = 0
+        m.text = ""; m.kind = .text; m.reactions = [:]; m.replyToId = nil; m.wasDeleted = true
+    }
+
+    func messageBy(id: String, in t: ChatTarget) -> Message? { t.messages.first { $0.id == id } }
+
+    /// Kopia załącznika pod oryginalną nazwą (do podglądu/udostępnienia); w katalogu tymczasowym.
+    func exportURL(for m: Message) -> URL? {
+        guard let f = m.attachmentFile else { return nil }
+        let src = Storage.media.appendingPathComponent(f)
+        let name = m.kind == .audio ? "glosowka-\(m.id.prefix(6)).m4a" : (m.fileName ?? f)
+        let dst = FileManager.default.temporaryDirectory.appendingPathComponent("szept-export", isDirectory: true).appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: dst)
+        return (try? FileManager.default.copyItem(at: src, to: dst)) != nil ? dst : nil
     }
 
     func setDisappear(_ seconds: Int, for c: Contact) async {
@@ -315,43 +434,99 @@ final class Engine {
             return
         }
 
+        let t = ChatTarget.contact(c)
+        if handleCommon(content, from: c, in: t) { try? context.save(); return }
         switch content.kind {
         case .text:
-            guard contact(id: c.id)?.messages.contains(where: { $0.id == content.id }) != true else { break }
-            let m = Message(id: content.id, contact: c, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
-            m.status = .delivered
-            applyExpiry(m, content.expire, contact: c)
-            context.insert(m)
-            c.unread += 1; c.lastActivity = Date()
-            notifyLocally()
+            guard !c.messages.contains(where: { $0.id == content.id }) else { break }
+            let m = newIncoming(content, from: c, in: t)
+            context.insert(m); bump(t); notifyLocally()
             Task { await sendReceipt(for: content.id, to: c) }
         case .image:
-            guard let att = content.att else { break }
-            let m = Message(id: content.id, contact: c, text: "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
-            m.status = .delivered; m.attachmentW = att.w; m.attachmentH = att.h
-            applyExpiry(m, content.expire, contact: c)
-            context.insert(m)
-            c.unread += 1; c.lastActivity = Date()
-            notifyLocally()
-            Task {
-                if let ct = try? await api.downloadAttachment(att.id),
-                   let plain = try? SzeptProtocol.decryptAttachment(ct, key: .init(key: att.key, nonce: att.nonce)) {
-                    m.attachmentFile = saveMedia(plain)
-                } else { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
-                try? context.save()
-                await sendReceipt(for: content.id, to: c)
-            }
+            guard let att = content.att, !c.messages.contains(where: { $0.id == content.id }) else { break }
+            let m = newIncoming(content, from: c, in: t)
+            m.kind = .image; m.attachmentW = att.w; m.attachmentH = att.h
+            context.insert(m); bump(t); notifyLocally()
+            download(att, into: m, ext: "jpg", receiptFor: content.id, to: c)
         case .receipt:
             if let ref = content.ref, let m = c.messages.first(where: { $0.id == ref }) { m.status = .delivered }
-        case .group:
-            break   // sterowanie grupą bez identyfikatora grupy – ignorujemy
         case .timer:
             c.disappearAfter = content.expire ?? 0
             let note = Message(contact: c, text: (content.expire ?? 0) > 0 ? "\(c.name): znikające wiadomości \(Durations.label(content.expire!))" : "\(c.name) wyłączył(a) znikające wiadomości", isMine: false)
             note.status = .delivered
             context.insert(note)
+        default:
+            break   // sterowanie grupą bez id grupy / nieznany rodzaj – ignorujemy
         }
         try? context.save()
+    }
+
+    // MARK: odbiór – części wspólne 1:1 i grup
+
+    private func newIncoming(_ content: MessageContent, from c: Contact, in t: ChatTarget) -> Message {
+        let m: Message
+        switch t {
+        case .contact(let cc): m = Message(id: content.id, contact: cc, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
+        case .group(let g): m = Message(id: content.id, group: g, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts)); m.senderId = c.id
+        }
+        m.status = .delivered; m.replyToId = content.r
+        if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
+        return m
+    }
+
+    private func bump(_ t: ChatTarget) {
+        switch t { case .contact(let c): c.unread += 1; c.lastActivity = Date(); case .group(let g): g.unread += 1; g.lastActivity = Date() }
+    }
+
+    /// Pobiera i odszyfrowuje załącznik w tle; w 1:1 potem potwierdza odbiór.
+    private func download(_ att: MessageContent.Attachment, into m: Message, ext: String, receiptFor id: String, to c: Contact?) {
+        Task {
+            if let ct = try? await api.downloadAttachment(att.id),
+               let plain = try? SzeptProtocol.decryptAttachment(ct, key: .init(key: att.key, nonce: att.nonce)) {
+                m.attachmentFile = saveMediaFile(plain, ext: ext)
+            } else { m.text = "⚠️ Nie udało się pobrać załącznika" }
+            try? context.save()
+            if let c { await sendReceipt(for: id, to: c) }
+        }
+    }
+
+    /// Czy wiadomość `m` w rozmowie `t` jest wiadomością nadawcy `c` (warunek dla edit/delete).
+    private func ownedBySender(_ m: Message, _ c: Contact, _ t: ChatTarget) -> Bool {
+        t.isGroup ? (m.senderId == c.id && !m.isMine) : (!m.isMine && m.contact?.id == c.id)
+    }
+
+    /// Rodzaje z 0.3 wspólne dla 1:1 i grup. Zwraca true, gdy rodzaj został obsłużony (także gdy odrzucony).
+    private func handleCommon(_ content: MessageContent, from c: Contact, in t: ChatTarget) -> Bool {
+        switch content.kind {
+        case .file, .audio:
+            guard let att = content.att, !t.messages.contains(where: { $0.id == content.id }) else { return true }
+            let m = newIncoming(content, from: c, in: t)
+            m.kind = content.kind; m.fileName = content.fn.map { String($0.prefix(120)) }; m.mimeType = content.mime; m.duration = content.dur ?? 0
+            context.insert(m); bump(t); notifyLocally()
+            let ext = content.kind == .audio ? "m4a" : ((content.fn as NSString?)?.pathExtension ?? "bin")
+            download(att, into: m, ext: ext, receiptFor: content.id, to: t.isGroup ? nil : c)
+            return true
+        case .reaction:
+            guard let ref = content.ref, let m = messageBy(id: ref, in: t), !m.wasDeleted else { return true }
+            var r = m.reactions
+            if content.op == "remove" { r.removeValue(forKey: c.id) }
+            else if let e = content.text, !e.isEmpty, e.count <= 8 { r[c.id] = e }
+            m.reactions = r
+            return true
+        case .edit:
+            guard let ref = content.ref, let m = messageBy(id: ref, in: t), ownedBySender(m, c, t), m.kind == .text, !m.wasDeleted,
+                  let text = content.text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return true }
+            m.text = text; m.editedAt = Date(timeIntervalSince1970: content.ts)
+            return true
+        case .delete:
+            guard let ref = content.ref, let m = messageBy(id: ref, in: t), ownedBySender(m, c, t) else { return true }
+            markDeleted(m)
+            return true
+        case .unknown:
+            return true
+        default:
+            return false
+        }
     }
 
     private func unknownSenderContact(_ sealed: Data) -> Contact? { nil }
@@ -372,10 +547,9 @@ final class Engine {
 
     // MARK: media / powiadomienia
 
-    private func saveMedia(_ data: Data) -> String? { saveMediaFile(data) }
-
-    func saveMediaFile(_ data: Data) -> String? {
-        let name = UUID().uuidString + ".jpg"
+    func saveMediaFile(_ data: Data, ext: String = "jpg") -> String? {
+        let clean = ext.lowercased().filter { $0.isLetter || $0.isNumber }.prefix(8)
+        let name = UUID().uuidString + "." + (clean.isEmpty ? "bin" : String(clean))
         return (try? SignalStore.write(data, to: Storage.media.appendingPathComponent(name))) != nil ? name : nil
     }
 
@@ -394,8 +568,26 @@ final class Engine {
     }
 
     static func requestNotifications() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            if granted { Push.registerIfAllowed() }
+        }
     }
+
+    // MARK: push (APNs) – docs/WERSJA-0.3.md §3
+
+    /// Token urządzenia z APNs → serwer (tylko gdy się zmienił). Serwer wyśle generyczne „Nowa wiadomość” bez treści i nadawcy.
+    func registerPush(token: Data) async {
+        guard isRegistered else { return }
+        let hex = token.map { String(format: "%02x", $0) }.joined()
+        let env = Push.environment
+        let stamp = hex + "|" + env + "|" + api.baseURL.absoluteString
+        guard UserDefaults.standard.string(forKey: "push_token") != stamp else { return }
+        do { try await api.setPush(token: hex, env: env); UserDefaults.standard.set(stamp, forKey: "push_token") }
+        catch { lastError = error.localizedDescription }
+    }
+
+    /// Odbiór zaległych kopert (po pushu / z tła); błędy połączenia ignorowane.
+    func sync() async { try? await drainPending() }
 }
 
 enum ProtocolAddressDummy { static let value = try! ProtocolAddress(name: "-", deviceId: 1) }
@@ -404,6 +596,8 @@ enum Durations {
     static let options: [(Int, String)] = [(0, "Wyłączone"), (30, "30 sekund"), (300, "5 minut"), (3600, "1 godzina"),
                                            (86400, "1 dzień"), (604800, "1 tydzień")]
     static func label(_ s: Int) -> String { options.first { $0.0 == s }?.1 ?? "\(s) s" }
+    /// 0:07, 1:30
+    static func clock(_ seconds: Double) -> String { let t = Int(seconds.rounded()); return "\(t / 60):" + String(format: "%02d", t % 60) }
 }
 
 enum ImageTools {
@@ -522,65 +716,8 @@ extension Engine {
 
     func markRead(_ t: ChatTarget) { switch t { case .contact(let c): markRead(c); case .group(let g): markRead(g) } }
 
-    // MARK: wysyłanie do grupy
-
-    func sendText(_ text: String, to g: ChatGroup) async {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let m = Message(group: g, text: trimmed, isMine: true)
-        if g.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(g.disappearAfter)) }
-        g.lastActivity = Date()
-        context.insert(m); try? context.save()
-        await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: trimmed,
-                                                      expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
-    }
-
-    func sendImage(_ image: UIImage, to g: ChatGroup) async {
-        guard let (jpeg, w, h) = ImageTools.prepare(image) else { return }
-        let m = Message(group: g, text: "", isMine: true)
-        m.attachmentW = w; m.attachmentH = h
-        m.attachmentFile = saveMediaFile(jpeg)
-        if g.disappearAfter > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(g.disappearAfter)) }
-        g.lastActivity = Date()
-        context.insert(m); try? context.save()
-        do {
-            let (ct, key) = try SzeptProtocol.encryptAttachment(jpeg)
-            let id = try await api.uploadAttachment(ct)
-            let att = MessageContent.Attachment(id: id, key: key.key, nonce: key.nonce, size: ct.count, w: w, h: h)
-            await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .image, att: att,
-                                                          expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
-        } catch {
-            m.status = .failed; lastError = error.localizedDescription; try? context.save()
-        }
-    }
-
-    func sendText(_ text: String, to t: ChatTarget) async {
-        switch t { case .contact(let c): await sendText(text, to: c); case .group(let g): await sendText(text, to: g) }
-    }
-
-    func sendImage(_ image: UIImage, to t: ChatTarget) async {
-        switch t { case .contact(let c): await sendImage(image, to: c); case .group(let g): await sendImage(image, to: g) }
-    }
-
     func setDisappear(_ seconds: Int, for t: ChatTarget) async {
         switch t { case .contact(let c): await setDisappear(seconds, for: c); case .group(let g): await setDisappear(seconds, for: g) }
-    }
-
-    fileprivate func retryGroup(_ m: Message, group g: ChatGroup) async {
-        m.status = .pending; try? context.save()
-        if let f = m.attachmentFile, let data = try? Data(contentsOf: Storage.media.appendingPathComponent(f)), let img = UIImage(data: data) {
-            context.delete(m); try? context.save()
-            await sendImage(img, to: g)
-        } else {
-            await sendGroup(message: m, content: MessageContent(id: m.id, ts: m.sentAt.timeIntervalSince1970, kind: .text, text: m.text,
-                                                          expire: g.disappearAfter > 0 ? g.disappearAfter : nil, g: g.id), to: g)
-        }
-    }
-
-    private func sendGroup(message m: Message, content: MessageContent, to g: ChatGroup) async {
-        do { try await deliverGroup(content, to: g); m.status = .sent }
-        catch { m.status = .failed; lastError = error.localizedDescription }
-        try? context.save()
     }
 
     func setDisappear(_ seconds: Int, for g: ChatGroup) async {
@@ -636,27 +773,17 @@ extension Engine {
             break
         case .text:
             guard let g = existing, g.members.contains(c.id), !g.messages.contains(where: { $0.id == content.id }) else { return }
-            let m = Message(id: content.id, group: g, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
-            m.senderId = c.id; m.status = .delivered
-            if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
-            context.insert(m)
-            g.unread += 1; g.lastActivity = Date()
-            notifyLocally()
+            let m = newIncoming(content, from: c, in: .group(g))
+            context.insert(m); bump(.group(g)); notifyLocally()
         case .image:
             guard let g = existing, g.members.contains(c.id), let att = content.att, !g.messages.contains(where: { $0.id == content.id }) else { return }
-            let m = Message(id: content.id, group: g, text: "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts))
-            m.senderId = c.id; m.status = .delivered; m.attachmentW = att.w; m.attachmentH = att.h
-            if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
-            context.insert(m)
-            g.unread += 1; g.lastActivity = Date()
-            notifyLocally()
-            Task {
-                if let ct = try? await api.downloadAttachment(att.id),
-                   let plain = try? SzeptProtocol.decryptAttachment(ct, key: .init(key: att.key, nonce: att.nonce)) {
-                    m.attachmentFile = saveMediaFile(plain)
-                } else { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
-                try? context.save()
-            }
+            let m = newIncoming(content, from: c, in: .group(g))
+            m.kind = .image; m.attachmentW = att.w; m.attachmentH = att.h
+            context.insert(m); bump(.group(g)); notifyLocally()
+            download(att, into: m, ext: "jpg", receiptFor: content.id, to: nil)
+        case .file, .audio, .reaction, .edit, .delete, .unknown:
+            guard let g = existing, g.members.contains(c.id) else { return }
+            _ = handleCommon(content, from: c, in: .group(g))
         case .timer:
             guard let g = existing, g.members.contains(c.id) else { return }
             g.disappearAfter = content.expire ?? 0

@@ -239,7 +239,14 @@ final class SzeptProtocol {
 // MARK: - Treść wiadomości (po odszyfrowaniu)
 
 struct MessageContent: Codable {
-    enum Kind: String, Codable { case text, image, receipt, timer, group }
+    /// Nieznany rodzaj (nowszy klient) dekoduje się jako `.unknown` i jest ignorowany – nigdy nie wysyłany.
+    enum Kind: String, Codable {
+        case text, image, receipt, timer, group, file, audio, reaction, edit, delete, unknown
+        init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = Kind(rawValue: raw) ?? .unknown
+        }
+    }
     struct Attachment: Codable { var id: String; var key: Data; var nonce: Data; var size: Int; var w: Int; var h: Int }
     /// Członek grupy w wiadomości sterującej: id konta, klucz tożsamości (base64), nazwa.
     struct Member: Codable, Equatable { var i: String; var k: String; var n: String? }
@@ -255,7 +262,12 @@ struct MessageContent: Codable {
     var g: String?         // id grupy – w każdej wiadomości dotyczącej grupy
     var gname: String?     // nazwa grupy (kind: group, op: set)
     var members: [Member]? // pełna lista członków łącznie z nadawcą (kind: group, op: set)
-    var op: String?        // "set" | "leave" (kind: group)
+    var op: String?        // "set" | "leave" (kind: group); "set" | "remove" (kind: reaction)
+    // 0.3 (docs/WERSJA-0.3.md)
+    var r: String?         // id wiadomości, na którą odpowiadamy
+    var fn: String?        // nazwa pliku (kind: file)
+    var mime: String?      // typ MIME (file/audio)
+    var dur: Double?       // długość nagrania w sekundach (kind: audio)
 }
 
 // MARK: - Link / kod QR kontaktu

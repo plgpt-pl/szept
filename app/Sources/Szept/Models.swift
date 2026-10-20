@@ -54,8 +54,33 @@ final class Message {
     var attachmentW: Int = 0
     var attachmentH: Int = 0
     var expiresAt: Date?
+    // 0.3
+    var kindRaw: String = "text"                 // text | image | file | audio
+    var replyToId: String?
+    var reactionsJSON: String = "{}"             // senderId → emoji (moje pod własnym accountId)
+    var editedAt: Date?
+    var wasDeleted: Bool = false
+    var fileName: String?
+    var mimeType: String?
+    var duration: Double = 0
 
     var status: Status { get { Status(rawValue: statusRaw) ?? .pending } set { statusRaw = newValue.rawValue } }
+    var kind: MessageContent.Kind { get { MessageContent.Kind(rawValue: kindRaw) ?? .text } set { kindRaw = newValue.rawValue } }
+    /// Zdjęcia sprzed 0.3 mają kindRaw "text", ale wymiary > 0.
+    var isImage: Bool { kindRaw == "image" || attachmentW > 0 }
+    var hasAttachment: Bool { isImage || kindRaw == "file" || kindRaw == "audio" }
+    /// Krótki opis do listy czatów i cytatów.
+    var summary: String {
+        if wasDeleted { return "Wiadomość usunięta" }
+        if isImage { return "📷 Zdjęcie" }
+        if kindRaw == "file" { return "📎 " + (fileName ?? "Plik") }
+        if kindRaw == "audio" { return "🎤 Głosówka " + Durations.clock(duration) }
+        return text
+    }
+    var reactions: [String: String] {
+        get { (try? JSONDecoder().decode([String: String].self, from: Data(reactionsJSON.utf8))) ?? [:] }
+        set { reactionsJSON = String(data: (try? JSONEncoder().encode(newValue)) ?? Data("{}".utf8), encoding: .utf8) ?? "{}" }
+    }
 
     init(id: String = UUID().uuidString, contact: Contact? = nil, group: ChatGroup? = nil, text: String, isMine: Bool, sentAt: Date = Date()) {
         self.id = id; self.contact = contact; self.group = group; self.text = text; self.isMine = isMine; self.sentAt = sentAt

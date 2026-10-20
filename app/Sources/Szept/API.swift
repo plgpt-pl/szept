@@ -102,6 +102,16 @@ final class SzeptAPI {
         return d
     }
 
+    /// Token APNs tego telefonu (hex) i środowisko ("sandbox" | "production"); serwer trzyma jeden na konto.
+    func setPush(token: String, env: String) async throws {
+        struct B: Encodable { var platform: String; var token: String; var env: String }
+        _ = try await send(try request("PUT", "v1/push", json: B(platform: "apns", token: token, env: env), auth: true))
+    }
+
+    func deletePush() async throws {
+        _ = try await send(try request("DELETE", "v1/push", auth: true))
+    }
+
     func deleteAccount() async throws {
         _ = try await send(try request("DELETE", "v1/accounts", auth: true))
     }

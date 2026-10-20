@@ -4,6 +4,7 @@ import BackgroundTasks
 
 @main
 struct SzeptApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var engine = Engine.shared
     @State private var lock = AppLock()
@@ -27,7 +28,7 @@ struct SzeptApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .active: lock.onActive(); engine.start(); if engine.connection != .online { engine.connect() }
+            case .active: lock.onActive(); engine.start(); if engine.connection != .online { engine.connect() }; Push.clearDelivered(); Push.registerIfAllowed()
             case .background: lock.onBackground(); BackgroundRefresh.schedule()
             default: break
             }
