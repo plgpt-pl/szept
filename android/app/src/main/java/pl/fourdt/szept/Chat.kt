@@ -125,7 +125,11 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
-            val bmp = withContext(Dispatchers.IO) { ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { d, _, _ -> d.isMutableRequired = true } }
+            val bmp = withContext(Dispatchers.IO) {
+                if (android.os.Build.VERSION.SDK_INT >= 28)
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { d, _, _ -> d.isMutableRequired = true }
+                else ctx.contentResolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }   // Android 8.x
+            }
             onSendImage(bmp, consumeReply())
         }
     }
