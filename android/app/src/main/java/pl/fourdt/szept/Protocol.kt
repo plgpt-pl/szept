@@ -47,10 +47,12 @@ val json = Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefault
 @Serializable data class Attachment(val id: String, val key: String, val nonce: String, val size: Int, val w: Int, val h: Int)
 /** Członek grupy w wiadomości sterującej (`kind: group`, `op: set`): id konta, klucz tożsamości (base64), nazwa. */
 @Serializable data class Member(val i: String, val k: String, val n: String? = null)
-/** Treść po odszyfrowaniu – JSON 1:1 z iOS. Pola grupowe (`g`, `gname`, `members`, `op`) wg docs/GRUPY.md. */
+/** Treść po odszyfrowaniu – JSON 1:1 z iOS. Pola grupowe (`g`, `gname`, `members`, `op`) wg docs/GRUPY.md;
+ *  0.3 (docs/WERSJA-0.3.md): `r` = odpowiedź na id, `fn`/`mime` = plik, `dur` = długość głosówki; kind także file/audio/reaction/edit/delete. */
 @Serializable data class MessageContent(val id: String, val ts: Double, val kind: String, val text: String? = null, val att: Attachment? = null,
                                         val expire: Int? = null, val ref: String? = null, val name: String? = null,
-                                        val g: String? = null, val gname: String? = null, val members: List<Member>? = null, val op: String? = null)
+                                        val g: String? = null, val gname: String? = null, val members: List<Member>? = null, val op: String? = null,
+                                        val r: String? = null, val fn: String? = null, val mime: String? = null, val dur: Double? = null)
 
 class SzeptException(message: String) : Exception(message)
 

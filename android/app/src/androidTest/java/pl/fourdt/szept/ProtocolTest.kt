@@ -145,4 +145,127 @@ class ProtocolTest {
         assertTrue(a.db.messagesForGroup(g.id).any { it.text.contains("opuścił") })
         a.api.deleteAccount(); b.api.deleteAccount(); c.api.deleteAccount()
     }
+
+    // ---------- 0.3 (docs/WERSJA-0.3.md): odpowiedzi, reakcje, edycja, usuwanie, pliki, głosówki ----------
+
+    private fun craft(from: Engine, to: Engine, c: MessageContent): ByteArray =
+        from.proto.seal(json.encodeToString(MessageContent.serializer(), c).toByteArray(), to.accountId!!, to.proto.identityKey.serialize())
+
+    @Test fun v03ContentJson() {
+        val reply = MessageContent("M2", 2.0, "text", text = "a ja nie", r = "M1")
+        val js = json.encodeToString(MessageContent.serializer(), reply)
+        assertTrue(js.contains("\"r\":\"M1\"")); assertFalse(js.contains("\"fn\"")); assertFalse(js.contains("\"dur\""))
+        assertEquals(reply, json.decodeFromString(MessageContent.serializer(), js))
+        val file = MessageContent("M3", 3.0, "file", att = Attachment("A", "a2V5", "bm9uY2U=", 10, 0, 0), fn = "raport.pdf", mime = "application/pdf", r = "M1")
+        assertEquals(file, json.decodeFromString(MessageContent.serializer(), json.encodeToString(MessageContent.serializer(), file)))
+        val audio = MessageContent("M4", 4.0, "audio", att = Attachment("B", "a2V5", "bm9uY2U=", 10, 0, 0), mime = "audio/mp4", dur = 12.5)
+        val ajs = json.encodeToString(MessageContent.serializer(), audio)
+        assertTrue(ajs.contains("\"dur\":12.5")); assertEquals(audio, json.decodeFromString(MessageContent.serializer(), ajs))
+        val react = MessageContent("M5", 5.0, "reaction", text = "👍", ref = "M1", op = "set", g = "G-1")
+        val rjs = json.encodeToString(MessageContent.serializer(), react)
+        assertTrue(rjs.contains("\"op\":\"set\"") && rjs.contains("\"ref\":\"M1\"") && rjs.contains("\"g\":\"G-1\""))
+        // nieznany rodzaj z nowszej wersji: dekoduje się, apka go ignoruje (test niżej)
+        val future = json.decodeFromString(MessageContent.serializer(), """{"id":"X","ts":1,"kind":"hologram","beam":true}""")
+        assertEquals("hologram", future.kind)
+        // model lokalny: reakcje jako mapa w JSON
+        val m = Message("M1", "C", "hej", false, 0L)
+        m.withReaction("A", "👍"); m.withReaction("B", "❤️"); assertEquals(mapOf("A" to "👍", "B" to "❤️"), m.reactionMap())
+        m.withReaction("A", null); assertEquals(mapOf("B" to "❤️"), m.reactionMap())
+        assertEquals("📎 raport.pdf", Message("M3", "C", "", false, 0L, kind = Message.FILE, fileName = "raport.pdf").summary())
+        assertEquals("🎤 Głosówka 0:12", Message("M4", "C", "", false, 0L, kind = Message.AUDIO, duration = 12.5).summary())
+    }
+
+    @Test fun v03TwoPhonesThroughServer() = runBlocking {
+        val server = System.getProperty("szept.server") ?: InstrumentationRegistry.getArguments().getString("server") ?: "http://10.0.2.2:11437"
+        assumeTrue("serwer niedostępny", try { SzeptApi(server, null).health() } catch (e: Exception) { false })
+        val id = UUID.randomUUID().toString().take(8)
+        val alice = Engine(ctx, tmp("ka"), prefsName = "t3-a-$id", dbName = "t3-a-$id.db"); val bob = Engine(ctx, tmp("kb"), prefsName = "t3-b-$id", dbName = "t3-b-$id.db")
+        alice.db.wipe(); bob.db.wipe(); alice.serverUrl = server; bob.serverUrl = server; alice.displayName = "Alice"; bob.displayName = "Bob"
+        alice.register(); bob.register(); alice.stop(); bob.stop()
+        val bobC = alice.addContact(bob.myLink!!, "Bob")
+        alice.sendText("Idziemy jutro?", bobC)
+        bob.drainPending()
+        val aliceC = bob.db.contact(alice.accountId!!)!!
+        val q = bob.db.messages(aliceC.id).first()
+        // odpowiedź
+        bob.sendText("Tak, o 10", aliceC, replyTo = q.id)
+        Thread.sleep(500); alice.drainPending()
+        val reply = alice.db.messages(bobC.id).first { it.text == "Tak, o 10" }
+        assertEquals(q.id, reply.replyTo); assertFalse(reply.isMine)
+        // reakcja: set, potem remove
+        bob.react(q, "👍"); Thread.sleep(500); alice.drainPending()
+        assertEquals(mapOf(bob.accountId!! to "👍"), alice.db.message(q.id)!!.reactionMap())
+        assertEquals(mapOf(bob.accountId!! to "👍"), bob.db.message(q.id)!!.reactionMap())
+        bob.react(q, null); Thread.sleep(500); alice.drainPending()
+        assertTrue(alice.db.message(q.id)!!.reactionMap().isEmpty())
+        // edycja własnej – przyjęta
+        alice.edit(alice.db.message(q.id)!!, "Idziemy jutro o 10?"); Thread.sleep(500); bob.drainPending()
+        val edited = bob.db.message(q.id)!!
+        assertEquals("Idziemy jutro o 10?", edited.text); assertNotNull(edited.editedAt)
+        // edycja / usunięcie CUDZEJ wiadomości (spreparowane przez Boba) – ignorowane
+        alice.handleIncoming(craft(bob, alice, MessageContent(UUID.randomUUID().toString(), 9.0, "edit", text = "hack", ref = q.id)))
+        alice.handleIncoming(craft(bob, alice, MessageContent(UUID.randomUUID().toString(), 9.0, "delete", ref = q.id)))
+        assertEquals("Idziemy jutro o 10?", alice.db.message(q.id)!!.text); assertFalse(alice.db.message(q.id)!!.deleted)
+        // Bob nie może też edytować własnej wiadomości u Alice jako "mojej" – jego edycja własnej jest OK
+        bob.edit(bob.db.message(reply.id)!!, "Tak, o 10:30"); Thread.sleep(500); alice.drainPending()
+        assertEquals("Tak, o 10:30", alice.db.message(reply.id)!!.text)
+        // nieznany rodzaj – bez crasha, nic nie dochodzi
+        val before = alice.db.messages(bobC.id).size
+        alice.handleIncoming(craft(bob, alice, MessageContent("FUT-$id", 9.0, "hologram", text = "z przyszłości")))
+        assertEquals(before, alice.db.messages(bobC.id).size); assertNull(alice.db.message("FUT-$id"))
+        // usunięcie u wszystkich
+        alice.deleteForAll(alice.db.message(q.id)!!); Thread.sleep(500); bob.drainPending()
+        val gone = bob.db.message(q.id)!!
+        assertTrue(gone.deleted); assertEquals("", gone.text); assertTrue(alice.db.message(q.id)!!.deleted)
+        // plik 100 KB
+        val pdf = ByteArray(100_000) { (it * 7 % 251).toByte() }
+        alice.sendFile(pdf, "raport.pdf", "application/pdf", bobC)
+        assertEquals(Message.SENT, alice.db.messages(bobC.id).first { it.kind == Message.FILE }.status)
+        bob.drainPending(); Thread.sleep(1500)
+        val f = bob.db.messages(aliceC.id).first { it.kind == Message.FILE }
+        assertEquals("raport.pdf", f.fileName); assertEquals("application/pdf", f.mime); assertNotNull("plik pobrany", f.attachmentFile)
+        assertArrayEquals(pdf, File(bob.mediaDir, f.attachmentFile!!).readBytes())
+        assertTrue(f.attachmentFile!!.endsWith(".pdf"))
+        // głosówka
+        val m4a = ByteArray(3000) { it.toByte() }
+        bob.sendAudio(m4a, 4.2, aliceC, replyTo = f.id)
+        Thread.sleep(500); alice.drainPending(); Thread.sleep(1500)
+        val a = alice.db.messages(bobC.id).first { it.kind == Message.AUDIO }
+        assertEquals(4.2, a.duration, 0.001); assertEquals("audio/mp4", a.mime); assertEquals(f.id, a.replyTo)
+        assertArrayEquals(m4a, File(alice.mediaDir, a.attachmentFile!!).readBytes()); assertTrue(a.attachmentFile!!.endsWith(".m4a"))
+        // za duży plik odrzucony lokalnie
+        assertThrows(SzeptException::class.java) { runBlocking { alice.sendFile(ByteArray(Config.MAX_FILE + 1), "duzy.bin", null, bobC) } }
+        alice.api.deleteAccount(); bob.api.deleteAccount()
+    }
+
+    @Test fun v03GroupReactionAndEdit() = runBlocking {
+        val server = System.getProperty("szept.server") ?: InstrumentationRegistry.getArguments().getString("server") ?: "http://10.0.2.2:11437"
+        assumeTrue("serwer niedostępny", try { SzeptApi(server, null).health() } catch (e: Exception) { false })
+        val id = UUID.randomUUID().toString().take(8)
+        fun eng(n: String) = Engine(ctx, tmp("k$n"), prefsName = "t3-$n-$id", dbName = "t3-$n-$id.db").also { it.db.wipe(); it.serverUrl = server }
+        val a = eng("a"); val b = eng("b"); val c = eng("c")
+        a.displayName = "Ala"; b.displayName = "Bartek"; c.displayName = "Celina"
+        a.register(); b.register(); c.register(); a.stop(); b.stop(); c.stop()
+        val g = a.createGroup("Ekipa", listOf(a.addContact(b.myLink!!, "Bartek"), a.addContact(c.myLink!!, "Celina")))
+        a.sendText("Kto bierze namiot?", g)
+        b.drainPending(); c.drainPending()
+        val atC = c.db.messagesForGroup(g.id).first { it.senderId == a.accountId }
+        c.react(atC, "🙏"); Thread.sleep(500); a.drainPending(); b.drainPending()
+        assertEquals(mapOf(c.accountId!! to "🙏"), a.db.message(atC.id)!!.reactionMap())
+        assertEquals(mapOf(c.accountId!! to "🙏"), b.db.message(atC.id)!!.reactionMap())
+        // odpowiedź w grupie
+        b.sendText("Ja", b.db.group(g.id)!!, replyTo = atC.id); Thread.sleep(500); a.drainPending(); c.drainPending()
+        assertEquals(atC.id, a.db.messagesForGroup(g.id).first { it.text == "Ja" }.replyTo)
+        // Bartek preparuje edycję wiadomości Ali w grupie – ignorowane
+        a.handleIncoming(craft(b, a, MessageContent(UUID.randomUUID().toString(), 9.0, "edit", text = "hack", ref = atC.id, g = g.id)))
+        assertEquals("Kto bierze namiot?", a.db.message(atC.id)!!.text)
+        // Ala edytuje własną – dociera do obu
+        a.edit(a.db.message(atC.id)!!, "Kto bierze namiot i grill?"); Thread.sleep(500); b.drainPending(); c.drainPending()
+        assertEquals("Kto bierze namiot i grill?", b.db.message(atC.id)!!.text); assertEquals("Kto bierze namiot i grill?", c.db.message(atC.id)!!.text)
+        // reakcja nie zmienia licznika nieprzeczytanych
+        val unreadBefore = a.db.group(g.id)!!.unread
+        b.react(b.db.message(atC.id)!!, "👍"); Thread.sleep(500); a.drainPending()
+        assertEquals(unreadBefore, a.db.group(g.id)!!.unread); assertEquals(2, a.db.message(atC.id)!!.reactionMap().size)
+        a.api.deleteAccount(); b.api.deleteAccount(); c.api.deleteAccount()
+    }
 }

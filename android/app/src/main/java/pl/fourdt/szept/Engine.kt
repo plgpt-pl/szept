@@ -30,6 +30,8 @@ object Config {
     const val DEFAULT_SERVER = "https://szept.plgpt.pl"
     const val PREKEY_LOW_WATER = 10
     const val MAX_IMAGE_SIDE = 1600
+    const val MAX_FILE = 32 * 1024 * 1024          // limit załącznika (serwer: MAX_ATT)
+    const val MAX_EMOJI = 8
 }
 
 enum class Connection { OFFLINE, CONNECTING, ONLINE }
@@ -176,6 +178,26 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         db.deleteContact(c.id)
     }
 
+    // --- cel wysyłki: rozmowa 1:1 albo grupa (ten sam kod dla obu) ---
+    private inner class Target(val c: Contact?, val g: Group?) {
+        val disappear get() = c?.disappearAfter ?: g?.disappearAfter ?: 0
+        fun touch(t: Long) { if (c != null) { c.lastActivity = t; db.save(c) } else if (g != null) { g.lastActivity = t; db.save(g) } }
+        fun newMessage(id: String, text: String, kind: String, ts: Long, replyTo: String?) = Message(id, c?.id, text, true, ts, kind = kind, groupId = g?.id, replyTo = replyTo).also {
+            if (disappear > 0) it.expiresAt = ts + disappear * 1000L
+        }
+        fun content(id: String, ts: Long, kind: String, text: String? = null, att: Attachment? = null, replyTo: String? = null, fn: String? = null, mime: String? = null, dur: Double? = null) =
+            MessageContent(id, ts / 1000.0, kind, text = text, att = att, expire = disappear.takeIf { it > 0 }, g = g?.id, r = replyTo, fn = fn, mime = mime, dur = dur)
+        /** Wysyłka wiadomości z zapisem statusu. */
+        fun send(m: Message, content: MessageContent) { if (g != null) sendGroup(m, content, g) else send(m, content, c!!) }
+        /** Wysyłka sygnału bez własnej wiadomości (reakcja, edycja, usunięcie, timer). */
+        fun fire(content: MessageContent): Boolean = if (g != null) deliverToGroup(content, g) else try { deliver(content, c!!); true } catch (e: Exception) { lastError.value = e.message; false }
+    }
+    private fun target(m: Message): Target? = when {
+        m.groupId != null -> db.group(m.groupId)?.let { Target(null, it) }
+        m.contactId != null -> db.contact(m.contactId)?.let { Target(it, null) }
+        else -> null
+    }
+
     // --- wysyłanie ---
     private fun ensureSession(c: Contact) { if (!proto.hasSession(c.id)) proto.processBundle(api.bundle(c.id), c.identityKey) }
 
@@ -185,43 +207,85 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         api.deliver(listOf(proto.seal(json.encodeToString(MessageContent.serializer(), withName).toByteArray(), c.id, c.identityKey)), c.id)
     }
 
-    suspend fun sendText(text: String, c: Contact) = withContext(Dispatchers.IO) {
-        val t = text.trim(); if (t.isEmpty()) return@withContext
-        val m = Message(UUID.randomUUID().toString(), c.id, t, true, System.currentTimeMillis())
-        if (c.disappearAfter > 0) m.expiresAt = m.sentAt + c.disappearAfter * 1000L
-        c.lastActivity = m.sentAt; db.save(c); db.save(m)
-        send(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = t, expire = c.disappearAfter.takeIf { it > 0 }), c)
+    private suspend fun sendTextTo(text: String, t: Target, replyTo: String?) = withContext(Dispatchers.IO) {
+        val tx = text.trim(); if (tx.isEmpty()) return@withContext
+        val m = t.newMessage(UUID.randomUUID().toString(), tx, Message.TEXT, System.currentTimeMillis(), replyTo)
+        t.touch(m.sentAt); db.save(m)
+        t.send(m, t.content(m.id, m.sentAt, Message.TEXT, text = tx, replyTo = replyTo))
     }
 
-    suspend fun sendImage(bitmap: Bitmap, c: Contact) = withContext(Dispatchers.IO) {
-        val (jpeg, w, h) = prepareImage(bitmap)
-        val m = Message(UUID.randomUUID().toString(), c.id, "", true, System.currentTimeMillis(), attW = w, attH = h, attachmentFile = saveMedia(jpeg))
-        if (c.disappearAfter > 0) m.expiresAt = m.sentAt + c.disappearAfter * 1000L
-        c.lastActivity = m.sentAt; db.save(c); db.save(m)
+    /** Załącznik dowolnego rodzaju: zapis lokalny, szyfrowanie, upload, wysyłka. `data` to gotowe bajty (JPEG / plik / m4a). */
+    private suspend fun sendBlob(data: ByteArray, kind: String, t: Target, w: Int = 0, h: Int = 0, fn: String? = null, mime: String? = null, dur: Double = 0.0,
+                                 replyTo: String? = null, id: String = UUID.randomUUID().toString(), localFile: String? = null) = withContext(Dispatchers.IO) {
+        if (data.size > Config.MAX_FILE) throw SzeptException("Plik jest za duży (limit ${Config.MAX_FILE / 1024 / 1024} MB).")
+        val m = t.newMessage(id, "", kind, System.currentTimeMillis(), replyTo).apply {
+            attW = w; attH = h; fileName = fn; this.mime = mime; duration = dur
+            attachmentFile = localFile ?: saveMedia(data, extensionFor(kind, fn))
+        }
+        t.touch(m.sentAt); db.save(m)
         try {
-            val (ct, kn) = SzeptProtocol.encryptAttachment(jpeg)
-            val id = api.uploadAttachment(ct)
-            send(m, MessageContent(m.id, m.sentAt / 1000.0, "image", att = Attachment(id, kn.first.b64(), kn.second.b64(), ct.size, w, h),
-                expire = c.disappearAfter.takeIf { it > 0 }), c)
+            val (ct, kn) = SzeptProtocol.encryptAttachment(data)
+            val attId = api.uploadAttachment(ct)
+            t.send(m, t.content(m.id, m.sentAt, kind, att = Attachment(attId, kn.first.b64(), kn.second.b64(), ct.size, w, h), replyTo = replyTo, fn = fn, mime = mime, dur = dur.takeIf { kind == Message.AUDIO }))
         } catch (e: Exception) { m.status = Message.FAILED; db.save(m); lastError.value = e.message }
     }
 
+    suspend fun sendText(text: String, c: Contact, replyTo: String? = null) = sendTextTo(text, Target(c, null), replyTo)
+    suspend fun sendText(text: String, g: Group, replyTo: String? = null) = sendTextTo(text, Target(null, g), replyTo)
+    suspend fun sendImage(bitmap: Bitmap, c: Contact, replyTo: String? = null) = prepareImage(bitmap).let { (j, w, h) -> sendBlob(j, Message.IMAGE, Target(c, null), w, h, replyTo = replyTo) }
+    suspend fun sendImage(bitmap: Bitmap, g: Group, replyTo: String? = null) = prepareImage(bitmap).let { (j, w, h) -> sendBlob(j, Message.IMAGE, Target(null, g), w, h, replyTo = replyTo) }
+    suspend fun sendFile(data: ByteArray, name: String, mime: String?, c: Contact, replyTo: String? = null) = sendBlob(data, Message.FILE, Target(c, null), fn = name, mime = mime ?: "application/octet-stream", replyTo = replyTo)
+    suspend fun sendFile(data: ByteArray, name: String, mime: String?, g: Group, replyTo: String? = null) = sendBlob(data, Message.FILE, Target(null, g), fn = name, mime = mime ?: "application/octet-stream", replyTo = replyTo)
+    /** Głosówka: AAC w m4a (MediaRecorder MPEG_4), `dur` w sekundach. */
+    suspend fun sendAudio(data: ByteArray, dur: Double, c: Contact, replyTo: String? = null) = sendBlob(data, Message.AUDIO, Target(c, null), mime = "audio/mp4", dur = dur, replyTo = replyTo)
+    suspend fun sendAudio(data: ByteArray, dur: Double, g: Group, replyTo: String? = null) = sendBlob(data, Message.AUDIO, Target(null, g), mime = "audio/mp4", dur = dur, replyTo = replyTo)
+
     suspend fun retry(m: Message) = withContext(Dispatchers.IO) {
+        val t = target(m) ?: return@withContext
         m.status = Message.PENDING; db.save(m)
         val file = m.attachmentFile?.let { File(mediaDir, it) }
-        if (m.groupId != null) {
-            val g = db.group(m.groupId) ?: return@withContext
-            if (file != null && file.exists()) { db.deleteMessage(m.id); sendImage(BitmapFactory.decodeFile(file.path), g) }
-            else sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = m.text, expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
-            return@withContext
-        }
-        val c = db.contact(m.contactId ?: return@withContext) ?: return@withContext
-        if (file != null && file.exists()) { db.deleteMessage(m.id); sendImage(BitmapFactory.decodeFile(file.path), c) }
-        else send(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = m.text, expire = c.disappearAfter.takeIf { it > 0 }), c)
+        if (m.hasAttachment && file != null && file.exists()) {
+            db.deleteMessage(m.id)
+            sendBlob(file.readBytes(), m.kind, t, m.attW, m.attH, m.fileName, m.mime, m.duration, m.replyTo, id = m.id, localFile = m.attachmentFile)
+        } else t.send(m, t.content(m.id, m.sentAt, Message.TEXT, text = m.text, replyTo = m.replyTo))
     }
 
     private fun send(m: Message, content: MessageContent, c: Contact) {
         try { deliver(content, c); m.status = Message.SENT } catch (e: Exception) { m.status = Message.FAILED; lastError.value = e.message }
+        db.save(m)
+    }
+
+    // --- reakcje, edycja, usuwanie (docs/WERSJA-0.3.md) ---
+    /** `emoji == null` cofa moją reakcję. Reakcja nie zmienia lastActivity ani licznika nieprzeczytanych. */
+    suspend fun react(m: Message, emoji: String?) = withContext(Dispatchers.IO) {
+        val t = target(m) ?: return@withContext
+        val me = accountId ?: return@withContext
+        val e = emoji?.take(Config.MAX_EMOJI)?.takeIf { it.isNotBlank() }
+        m.withReaction(me, e); db.save(m)
+        t.fire(t.content(UUID.randomUUID().toString(), System.currentTimeMillis(), "reaction", text = e ?: m.reactionMap()[me] ?: "")
+            .copy(ref = m.id, op = if (e == null) "remove" else "set", expire = null))
+    }
+
+    /** Edycja tylko własnej wiadomości tekstowej. */
+    suspend fun edit(m: Message, newText: String) = withContext(Dispatchers.IO) {
+        val tx = newText.trim(); if (tx.isEmpty() || !m.isMine || m.deleted || m.kind != Message.TEXT || tx == m.text) return@withContext
+        val t = target(m) ?: return@withContext
+        m.text = tx; m.editedAt = System.currentTimeMillis(); db.save(m)
+        t.fire(t.content(UUID.randomUUID().toString(), m.editedAt!!, "edit", text = tx).copy(ref = m.id, expire = null))
+    }
+
+    /** Usunięcie u wszystkich: tylko moje; lokalnie zostaje placeholder. */
+    suspend fun deleteForAll(m: Message) = withContext(Dispatchers.IO) {
+        if (!m.isMine || m.deleted) return@withContext
+        val t = target(m) ?: return@withContext
+        markDeleted(m)
+        t.fire(t.content(UUID.randomUUID().toString(), System.currentTimeMillis(), "delete").copy(ref = m.id, expire = null))
+    }
+
+    fun deleteLocally(m: Message) { removeMedia(m); db.deleteMessage(m.id) }
+
+    private fun markDeleted(m: Message) {
+        removeMedia(m); m.attachmentFile = null; m.text = ""; m.deleted = true; m.reactions = "{}"; m.replyTo = null; m.fileName = null
         db.save(m)
     }
 
@@ -291,27 +355,6 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         db.deleteGroup(g.id)
     }
 
-    suspend fun sendText(text: String, g: Group) = withContext(Dispatchers.IO) {
-        val t = text.trim(); if (t.isEmpty()) return@withContext
-        val m = Message(UUID.randomUUID().toString(), null, t, true, System.currentTimeMillis(), groupId = g.id)
-        if (g.disappearAfter > 0) m.expiresAt = m.sentAt + g.disappearAfter * 1000L
-        g.lastActivity = m.sentAt; db.save(g); db.save(m)
-        sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "text", text = t, expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
-    }
-
-    suspend fun sendImage(bitmap: Bitmap, g: Group) = withContext(Dispatchers.IO) {
-        val (jpeg, w, h) = prepareImage(bitmap)
-        val m = Message(UUID.randomUUID().toString(), null, "", true, System.currentTimeMillis(), attW = w, attH = h, attachmentFile = saveMedia(jpeg), groupId = g.id)
-        if (g.disappearAfter > 0) m.expiresAt = m.sentAt + g.disappearAfter * 1000L
-        g.lastActivity = m.sentAt; db.save(g); db.save(m)
-        try {
-            val (ct, kn) = SzeptProtocol.encryptAttachment(jpeg)
-            val id = api.uploadAttachment(ct)
-            sendGroup(m, MessageContent(m.id, m.sentAt / 1000.0, "image", att = Attachment(id, kn.first.b64(), kn.second.b64(), ct.size, w, h),
-                expire = g.disappearAfter.takeIf { it > 0 }, g = g.id), g)
-        } catch (e: Exception) { m.status = Message.FAILED; db.save(m); lastError.value = e.message }
-    }
-
     suspend fun setDisappear(seconds: Int, g: Group) = withContext(Dispatchers.IO) {
         g.disappearAfter = seconds; db.save(g)
         note(g, if (seconds > 0) "Znikające wiadomości: ${Durations.label(seconds)}" else "Znikające wiadomości wyłączone", true)
@@ -359,23 +402,24 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
             "text" -> {
                 val g = existing ?: return; if (c.id !in g.members) return
                 if (db.message(content.id) != null) return
-                val m = Message(content.id, null, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED, groupId = g.id, senderId = c.id)
+                val m = Message(content.id, null, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED, groupId = g.id, senderId = c.id, replyTo = content.r)
                 content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
                 db.save(m); g.unread++; g.lastActivity = now; db.save(g)
                 onIncomingGroup?.invoke(g)                                             // bez potwierdzeń odbioru dla grup
             }
-            "image" -> content.att?.let { att ->
+            Message.IMAGE, Message.FILE, Message.AUDIO -> content.att?.let { att ->
                 val g = existing ?: return; if (c.id !in g.members) return
                 if (db.message(content.id) != null) return
-                val m = Message(content.id, null, "", false, (content.ts * 1000).toLong(), Message.DELIVERED, attW = att.w, attH = att.h, groupId = g.id, senderId = c.id)
-                content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
+                val m = incomingBlob(content, att, null, g.id, c.id, now)
                 db.save(m); g.unread++; g.lastActivity = now; db.save(g)
                 onIncomingGroup?.invoke(g)
-                scope.launch {
-                    try { m.attachmentFile = saveMedia(SzeptProtocol.decryptAttachment(api.downloadAttachment(att.id), att.key.unb64(), att.nonce.unb64())) }
-                    catch (e: Exception) { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
-                    db.save(m)
-                }
+                scope.launch { download(m, att) }
+            }
+            "reaction", "edit", "delete" -> {
+                val g = existing ?: return; if (c.id !in g.members) return
+                val m = content.ref?.let { db.message(it) } ?: return
+                if (m.groupId != gid) return
+                applySignal(content, m, isOwnerSender = m.senderId == c.id, sender = c.id)
             }
             "timer" -> {
                 val g = existing ?: return; if (c.id !in g.members) return
@@ -383,6 +427,36 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
                 note(g, if (g.disappearAfter > 0) "${c.name}: znikające wiadomości ${Durations.label(g.disappearAfter)}" else "${c.name} wyłączył(a) znikające wiadomości", false)
             }
         }
+    }
+
+    /** Reakcja (na dowolną wiadomość rozmowy) albo edycja/usunięcie – tylko gdy `ref` jest wiadomością nadawcy. */
+    private fun applySignal(content: MessageContent, m: Message, isOwnerSender: Boolean, sender: String) {
+        when (content.kind) {
+            "reaction" -> {
+                if (m.deleted) return
+                val e = content.text?.take(Config.MAX_EMOJI)?.takeIf { it.isNotBlank() }
+                m.withReaction(sender, if (content.op == "remove") null else e ?: return); db.save(m)
+            }
+            "edit" -> {
+                if (!isOwnerSender || m.isMine || m.deleted || m.kind != Message.TEXT) return
+                val tx = content.text?.trim()?.takeIf { it.isNotEmpty() } ?: return
+                m.text = tx; m.editedAt = (content.ts * 1000).toLong(); db.save(m)
+            }
+            "delete" -> { if (!isOwnerSender || m.isMine || m.deleted) return; markDeleted(m) }
+        }
+    }
+
+    private fun incomingBlob(content: MessageContent, att: Attachment, contactId: String?, groupId: String?, senderId: String?, now: Long): Message {
+        val m = Message(content.id, contactId, "", false, (content.ts * 1000).toLong(), Message.DELIVERED, attW = att.w, attH = att.h, groupId = groupId, senderId = senderId,
+            kind = content.kind, replyTo = content.r, fileName = content.fn?.take(200)?.replace('/', '_'), mime = content.mime, duration = content.dur ?: 0.0)
+        content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
+        return m
+    }
+
+    private fun download(m: Message, att: Attachment) {
+        try { m.attachmentFile = saveMedia(SzeptProtocol.decryptAttachment(api.downloadAttachment(att.id), att.key.unb64(), att.nonce.unb64()), extensionFor(m.kind, m.fileName)) }
+        catch (e: Exception) { m.text = "⚠️ Nie udało się pobrać załącznika" }
+        db.save(m)
     }
 
     // --- odbiór ---
@@ -402,32 +476,32 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
         if (content.g != null) { db.save(c); handleGroupContent(content, c, now); return }
         when (content.kind) {
             "text" -> if (db.message(content.id) == null) {
-                val m = Message(content.id, c.id, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED)
+                val m = Message(content.id, c.id, content.text ?: "", false, (content.ts * 1000).toLong(), Message.DELIVERED, replyTo = content.r)
                 content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
                 db.save(m); c.unread++; c.lastActivity = now
                 sendReceipt(content.id, c); onIncoming?.invoke(c)
             }
-            "image" -> content.att?.let { att ->
+            Message.IMAGE, Message.FILE, Message.AUDIO -> content.att?.let { att ->
                 if (db.message(content.id) != null) return@let
-                val m = Message(content.id, c.id, "", false, (content.ts * 1000).toLong(), Message.DELIVERED, attW = att.w, attH = att.h)
-                content.expire?.takeIf { it > 0 }?.let { m.expiresAt = now + it * 1000L }
+                val m = incomingBlob(content, att, c.id, null, null, now)
                 db.save(m); c.unread++; c.lastActivity = now
                 onIncoming?.invoke(c)
-                scope.launch {
-                    try { m.attachmentFile = saveMedia(SzeptProtocol.decryptAttachment(api.downloadAttachment(att.id), att.key.unb64(), att.nonce.unb64())) }
-                    catch (e: Exception) { m.text = "⚠️ Nie udało się pobrać zdjęcia" }
-                    db.save(m); sendReceipt(content.id, c)
-                }
+                scope.launch { download(m, att); sendReceipt(content.id, c) }
+            }
+            "reaction", "edit", "delete" -> run {
+                val m = content.ref?.let { db.message(it) } ?: return@run
+                if (m.groupId != null || m.contactId != c.id) return@run
+                applySignal(content, m, isOwnerSender = !m.isMine, sender = c.id)
             }
             "receipt" -> content.ref?.let { db.message(it) }?.let { it.status = Message.DELIVERED; db.save(it) }
             "timer" -> {
                 c.disappearAfter = content.expire ?: 0
                 db.save(Message(UUID.randomUUID().toString(), c.id, if (c.disappearAfter > 0) "${c.name}: znikające wiadomości ${Durations.label(c.disappearAfter)}" else "${c.name} wyłączył(a) znikające wiadomości", false, now, Message.DELIVERED))
             }
+            // nieznany rodzaj (nowsza wersja apki po drugiej stronie) – ignorujemy
         }
         db.save(c)
     }
-
     fun markRead(c: Contact) { if (c.unread != 0) { c.unread = 0; db.save(c) } }
 
     fun purgeExpired() {
@@ -436,7 +510,12 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     }
 
     // --- media ---
-    private fun saveMedia(data: ByteArray): String { val name = UUID.randomUUID().toString() + ".jpg"; File(mediaDir, name).writeBytes(data); return name }
+    private fun extensionFor(kind: String, fn: String?): String = when (kind) {
+        Message.IMAGE -> "jpg"
+        Message.AUDIO -> "m4a"
+        else -> fn?.substringAfterLast('.', "")?.takeIf { it.length in 1..8 && it.all { ch -> ch.isLetterOrDigit() } } ?: "bin"
+    }
+    private fun saveMedia(data: ByteArray, ext: String = "jpg"): String { val name = UUID.randomUUID().toString() + "." + ext; File(mediaDir, name).writeBytes(data); return name }
     private fun removeMedia(m: Message) { m.attachmentFile?.let { File(mediaDir, it).delete() } }
 
     private fun prepareImage(bmp: Bitmap): Triple<ByteArray, Int, Int> {

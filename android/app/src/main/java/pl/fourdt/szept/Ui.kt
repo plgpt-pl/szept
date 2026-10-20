@@ -203,7 +203,7 @@ fun ContactRow(engine: Engine, c: Contact, onClick: () -> Unit) {
                 Spacer(Modifier.weight(1f)); Text(timeAgo(c.lastActivity), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(when { last == null -> "Brak wiadomości"; last.attW > 0 -> (if (last.isMine) "Ty: " else "") + "📷 Zdjęcie"; else -> (if (last.isMine) "Ty: " else "") + last.text },
+                Text(if (last == null) "Brak wiadomości" else (if (last.isMine) "Ty: " else "") + last.summary(),
                     color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 if (c.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
                 if (c.unread > 0) Text("${c.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
@@ -235,7 +235,7 @@ fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val who = when { last == null -> ""; last.isMine -> "Ty: "; last.senderId != null -> senderName(engine, last) + ": "; else -> "" }
-                Text(when { last == null -> "Brak wiadomości"; last.attW > 0 -> who + "📷 Zdjęcie"; else -> who + last.text },
+                Text(if (last == null) "Brak wiadomości" else who + last.summary(),
                     color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 if (g.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
                 if (g.unread > 0) Text("${g.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
@@ -248,124 +248,7 @@ fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
 fun timeAgo(t: Long): String { val d = (System.currentTimeMillis() - t) / 1000; return when { d < 60 -> "teraz"; d < 3600 -> "${d / 60} min"; d < 86400 -> "${d / 3600} godz."; else -> "${d / 86400} dni" } }
 fun hhmm(t: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(t))
 
-// ---------- czat (wspólny szkielet dla rozmowy 1:1 i grupy) ----------
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ChatScreen(engine: Engine, nav: NavHostController, id: String) {
-    val v by engine.db.version.collectAsState()
-    val contact = remember(v) { engine.db.contact(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack() }; return }
-    val messages = remember(v) { engine.db.messages(id) }
-    LaunchedEffect(v) { engine.markRead(contact) }
-    ChatBody(engine, nav, title = contact.name, messages = messages, disappearAfter = contact.disappearAfter,
-        onSetDisappear = { engine.setDisappear(it, contact) }, infoRoute = "contact/$id", infoLabel = "Informacje i weryfikacja",
-        onSendText = { engine.sendText(it, contact) }, onSendImage = { engine.sendImage(it, contact) }, showSender = false) {
-        if (contact.identityChanged) Banner(Sowa.warn.copy(alpha = 0.2f), Icons.Default.Warning, "Klucz bezpieczeństwa tego kontaktu się zmienił. Potwierdź numer bezpieczeństwa.") { nav.navigate("contact/$id") }
-        if (contact.fromUnknown && !contact.verified) Banner(Sowa.glow, Icons.Default.PersonSearch, "Ten kontakt napisał pierwszy. Zweryfikuj numer bezpieczeństwa, zanim mu zaufasz.") { nav.navigate("contact/$id") }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun GroupChatScreen(engine: Engine, nav: NavHostController, id: String) {
-    val v by engine.db.version.collectAsState()
-    val group = remember(v) { engine.db.group(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack() }; return }
-    val messages = remember(v) { engine.db.messagesForGroup(id) }
-    LaunchedEffect(v) { engine.markRead(group) }
-    ChatBody(engine, nav, title = group.name, subtitle = "${group.members.size + 1} os.", messages = messages, disappearAfter = group.disappearAfter,
-        onSetDisappear = { engine.setDisappear(it, group) }, infoRoute = "groupinfo/$id", infoLabel = "Informacje o grupie",
-        onSendText = { engine.sendText(it, group) }, onSendImage = { engine.sendImage(it, group) }, showSender = true) {}
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subtitle: String? = null, messages: List<Message>, disappearAfter: Int,
-                     onSetDisappear: suspend (Int) -> Unit, infoRoute: String, infoLabel: String, onSendText: suspend (String) -> Unit,
-                     onSendImage: suspend (Bitmap) -> Unit, showSender: Boolean, banners: @Composable ColumnScope.() -> Unit) {
-    var draft by remember { mutableStateOf("") }
-    var menu by remember { mutableStateOf(false) }
-    var preview by remember { mutableStateOf<Bitmap?>(null) }
-    val scope = rememberCoroutineScope()
-    val ctx = LocalContext.current
-    val listState = rememberLazyListState()
-    LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            val bmp = withContext(Dispatchers.IO) { ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { d, _, _ -> d.isMutableRequired = true } }
-            onSendImage(bmp)
-        }
-    }
-    Scaffold(containerColor = Color.Transparent, topBar = {
-        TopAppBar(title = { Column { Text(title, maxLines = 1); subtitle?.let { Text(it, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall) } } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wstecz") } },
-            actions = {
-                IconButton({ menu = true }) { Icon(if (disappearAfter > 0) Icons.Default.Timer else Icons.Default.MoreVert, null) }
-                DropdownMenu(menu, { menu = false }) {
-                    Durations.options.forEach { (s, l) -> DropdownMenuItem({ Text((if (s == disappearAfter) "✓ " else "") + l) }, { menu = false; scope.launch { onSetDisappear(s) } }) }
-                    HorizontalDivider()
-                    DropdownMenuItem({ Text(infoLabel) }, { menu = false; nav.navigate(infoRoute) }, leadingIcon = { Icon(if (showSender) Icons.Default.Group else Icons.Default.Verified, null) })
-                }
-            })
-    }, bottomBar = {
-        Row(Modifier.fillMaxWidth().background(Sowa.card.copy(alpha = 0.9f)).padding(10.dp).imePadding().navigationBarsPadding(), verticalAlignment = Alignment.Bottom) {
-            IconButton({ picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Icon(Icons.Default.Image, "Zdjęcie", tint = Sowa.cyan) }
-            OutlinedTextField(draft, { draft = it }, Modifier.weight(1f), placeholder = { Text("Szepnij coś…") }, maxLines = 6, shape = RoundedCornerShape(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.size(42.dp).clip(CircleShape).background(if (draft.isBlank()) Brush2(Sowa.border) else Sowa.action)
-                .clickable(enabled = draft.isNotBlank()) { val t = draft; draft = ""; scope.launch { onSendText(t) } }, contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ArrowUpward, "Wyślij", tint = Color.White)
-            }
-        }
-    }) { pad ->
-        Column(Modifier.fillMaxSize().padding(pad)) {
-            banners()
-            LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(messages, key = { it.id }) { m ->
-                    Bubble(engine, m, onRetry = { scope.launch { engine.retry(m) } }, onTapImage = { preview = it },
-                        sender = if (showSender && !m.isMine && m.senderId != null) senderName(engine, m) else null)
-                }
-            }
-        }
-    }
-    preview?.let { bmp -> Box(Modifier.fillMaxSize().background(Color.Black).clickable { preview = null }, contentAlignment = Alignment.Center) { Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth()) } }
-}
-
-@Composable
-private fun Banner(bg: Color, icon: ImageVector, text: String, onClick: () -> Unit) = Row(Modifier.fillMaxWidth().background(bg).clickable(onClick = onClick).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-    Icon(icon, null, tint = Sowa.cyan); Spacer(Modifier.width(8.dp)); Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f)); Text("Sprawdź", color = Sowa.cyan, style = MaterialTheme.typography.labelMedium)
-}
-
-@Composable
-fun Bubble(engine: Engine, m: Message, onRetry: () -> Unit, onTapImage: (Bitmap) -> Unit, sender: String? = null) {
-    if (m.groupId != null && m.senderId == null && !m.isMine && m.attW == 0) {   // notatka systemowa grupy (ktoś dodał, opuścił, zmienił)
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text(m.text, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 4.dp)) }
-        return
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (m.isMine) Arrangement.End else Arrangement.Start) {
-        Column(horizontalAlignment = if (m.isMine) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 290.dp)) {
-            sender?.let { Text(it, color = Sowa.cyan, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 6.dp, bottom = 2.dp)) }
-            if (m.attW > 0) {
-                val bmp = remember(m.attachmentFile) { m.attachmentFile?.let { BitmapFactory.decodeFile(File(engine.mediaDir, it).path) } }
-                if (bmp != null) Image(bmp.asImageBitmap(), null, Modifier.widthIn(max = 240.dp).heightIn(max = 300.dp).clip(RoundedCornerShape(14.dp)).clickable { onTapImage(bmp) })
-                else Box(Modifier.size(200.dp, 150.dp).clip(RoundedCornerShape(14.dp)).background(Sowa.card), contentAlignment = Alignment.Center) { if (m.text.isEmpty()) CircularProgressIndicator() else Text(m.text, style = MaterialTheme.typography.bodySmall) }
-            } else Box(Modifier.clip(RoundedCornerShape(18.dp)).background(if (m.isMine) Sowa.userBubble else Brush2(Sowa.card)).padding(horizontal = 14.dp, vertical = 9.dp)) {
-                Text(m.text, color = if (m.isMine) Color.White else MaterialTheme.colorScheme.onSurface)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (m.expiresAt != null) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
-                Text(hhmm(m.sentAt), color = Sowa.textMuted, fontSize = 10.sp)
-                if (m.isMine) when (m.status) {
-                    Message.PENDING -> Icon(Icons.Default.Schedule, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
-                    Message.SENT -> Icon(Icons.Default.Check, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
-                    Message.DELIVERED -> Icon(Icons.Default.CheckCircle, null, tint = Sowa.cyan, modifier = Modifier.size(10.dp))
-                    else -> Text(" ponów", color = Sowa.warn, fontSize = 10.sp, modifier = Modifier.clickable(onClick = onRetry))
-                }
-            }
-        }
-    }
-}
-private fun Brush2(c: Color) = androidx.compose.ui.graphics.Brush.linearGradient(listOf(c, c))
+internal fun Brush2(c: Color) = androidx.compose.ui.graphics.Brush.linearGradient(listOf(c, c))
 
 // ---------- dodawanie kontaktu ----------
 @OptIn(ExperimentalMaterial3Api::class)
