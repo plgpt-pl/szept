@@ -53,3 +53,4 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 ## 0.3 (21.10.2026, w toku)
 - Spec docs/WERSJA-0.3.md. Serwer (push APNs, 32 MB, 24 testy), Android (Chat.kt, Db v3, 9 testów) i iOS (Push.swift, Media.swift, 17 testów; 0.3.0 (4)) ZROBIONE i wypchnięte. Lokalizacja EN/PL w toku. Push czeka na klucz APNs od usera (portal → Keys → APNs) i wpisy SZEPT_APNS_* w server/.env.
 - Capability PUSH_NOTIFICATIONS na bundle ID włączona przez API; profil „Szept App Store” odtworzony (JVQ96974SY, aps-environment production) i wgrany do Xcode.
+- 20.10 22:50: iOS 0.3.0 (4) w TestFlight: wewnętrznie dostępny od razu, zewnętrznie WAITING_FOR_BETA_REVIEW (grupa Znajomi). APK 0.3.0 na stronie. Otwarte: klucz APNs (user), smoke-test głosówek/plików na telefonach, interop 0.3 iOS↔Android, wyłączenie SZEPT_ATTACH_REQUIRE_AUTH=0 gdy wszyscy na 0.3, App Store 0.2.0 w recenzji (po zatwierdzeniu wysłać 0.3.0 jako aktualizację).
