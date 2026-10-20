@@ -25,7 +25,12 @@ API v1 (JSON, base64 standard):
   POST   /v1/attachments       (auth)      surowe bajty (szyfrogram) -> {id}; limit 200 MB żywych bajtów na konto,
                                            globalnie SZEPT_MAX_ATTACH_BYTES (5 GB), 20 wysyłek/min na IP
   GET    /v1/attachments/{id}              pobranie, DELETE (bez auth) po pobraniu
-  DELETE /v1/accounts          (auth)      skasowanie konta i kolejki
+  PUT    /v1/push              (auth)      {platform:"apns", token:"<hex>", env:"sandbox"|"production"} -> 204;
+                                           jeden token na konto. Push wysyłany po zakolejkowaniu kopert, gdy konto nie ma
+                                           otwartego WebSocketu (treść zawsze generyczna, max 1 push / konto / 10 s;
+                                           klucz APNs: SZEPT_APNS_KEY_PATH/_KEY_ID/_TEAM_ID/_TOPIC, brak = wyłączony)
+  DELETE /v1/push              (auth)      usunięcie tokenu push
+  DELETE /v1/accounts          (auth)      skasowanie konta, kolejki, załączników i tokenu push
 """
 import asyncio, base64, hashlib, hmac, json, logging, os, secrets, sqlite3, time
 from collections import defaultdict, deque
@@ -33,12 +38,14 @@ from pathlib import Path
 
 from aiohttp import web, WSMsgType
 
+import push as push_mod
+
 PORT = int(os.environ.get("SZEPT_PORT", "11437"))
 DATA = Path(os.environ.get("SZEPT_DATA", Path(__file__).parent / "data"))
 MSG_TTL = int(os.environ.get("SZEPT_MSG_TTL_DAYS", "30")) * 86400
 ATT_TTL = int(os.environ.get("SZEPT_ATT_TTL_DAYS", "7")) * 86400
 MAX_MSG = 64 * 1024
-MAX_ATT = 12 * 1024 * 1024
+MAX_ATT = 32 * 1024 * 1024               # pliki/głosówki (0.3)
 MAX_QUEUE = 2000                       # kopert na konto
 MAX_MAILBOX_BYTES = int(os.environ.get("SZEPT_MAILBOX_BYTES", str(32 * 1024 * 1024)))  # bajtów kopert na konto
 RATE_PER_MIN = int(os.environ.get("SZEPT_RATE_PER_MIN", "240"))
@@ -62,6 +69,9 @@ WS_TOKEN_PREFIX = "szept-token."
 # każdy klient mógłby podać dowolny adres i omijać limity.
 TRUSTED_PROXY_IPS = {"127.0.0.1", "::1"}
 HEARTBEAT = 30
+PUSH_MIN_INTERVAL = 10.0               # sekund między pushami do jednego konta
+PUSH_PLATFORMS = {"apns"}
+PUSH_ENVS = {"sandbox", "production"}
 
 log = logging.getLogger("szept")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -103,6 +113,8 @@ CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, accoun
 CREATE INDEX IF NOT EXISTS messages_account ON messages(account_id, id);
 CREATE TABLE IF NOT EXISTS attachments(id TEXT PRIMARY KEY, size INTEGER NOT NULL, ts REAL NOT NULL, owner TEXT);
 CREATE INDEX IF NOT EXISTS attachments_owner ON attachments(owner);
+CREATE TABLE IF NOT EXISTS push_tokens(account_id TEXT PRIMARY KEY, platform TEXT NOT NULL, token TEXT NOT NULL,
+  env TEXT NOT NULL, ts REAL NOT NULL);
 """
 
 
@@ -186,9 +198,24 @@ class Store:
         with self.db:
             for t in ("prekeys", "kyber_prekeys", "messages"):
                 self.db.execute(f"DELETE FROM {t} WHERE account_id=?", (account_id,))
+            self.db.execute("DELETE FROM push_tokens WHERE account_id=?", (account_id,))
             self.db.execute("DELETE FROM accounts WHERE id=?", (account_id,))
         for (att_id,) in self.db.execute("SELECT id FROM attachments WHERE owner=?", (account_id,)).fetchall():
             self.delete_attachment(att_id)
+
+    # --- push ------------------------------------------------------------------------------------
+    def set_push(self, account_id: str, platform: str, token: str, env: str):
+        self.db.execute("INSERT OR REPLACE INTO push_tokens VALUES(?,?,?,?,?)", (account_id, platform, token, env, time.time()))
+
+    def get_push(self, account_id: str):
+        row = self.db.execute("SELECT platform, token, env FROM push_tokens WHERE account_id=?", (account_id,)).fetchone()
+        return {"platform": row[0], "token": row[1], "env": row[2]} if row else None
+
+    def delete_push(self, account_id: str, token: str | None = None):
+        if token is None:
+            self.db.execute("DELETE FROM push_tokens WHERE account_id=?", (account_id,))
+        else:
+            self.db.execute("DELETE FROM push_tokens WHERE account_id=? AND token=?", (account_id, token))
 
     # --- kolejka kopert --------------------------------------------------------------------------
     def enqueue(self, account_id, contents: list[bytes]) -> int:
@@ -458,6 +485,7 @@ async def put_messages(req):
         raise web.HTTPTooManyRequests(text="slow down")
     n = store(req).enqueue(account_id, contents)
     req.app["wake"](account_id)
+    req.app["notify"](account_id)
     return web.json_response({"queued": n})
 
 
@@ -560,6 +588,23 @@ async def delete_attachment(req):
     return web.json_response({"ok": True})
 
 
+async def put_push(req):
+    account_id = auth(req)
+    d = await body_json(req)
+    platform, token, env = d.get("platform"), d.get("token"), d.get("env")
+    if platform not in PUSH_PLATFORMS or env not in PUSH_ENVS:
+        raise web.HTTPBadRequest(text="bad platform/env")
+    if not isinstance(token, str) or not 32 <= len(token) <= 200 or any(c not in "0123456789abcdefABCDEF" for c in token):
+        raise web.HTTPBadRequest(text="bad token")
+    store(req).set_push(account_id, platform, token.lower(), env)
+    return web.Response(status=204)
+
+
+async def delete_push(req):
+    store(req).delete_push(auth(req))
+    return web.Response(status=204)
+
+
 async def delete_account(req):
     store(req).delete_account(auth(req))
     return web.json_response({"ok": True})
@@ -621,9 +666,13 @@ async def on_startup(app):
 
 async def on_cleanup(app):
     app["cleanup"].cancel()
+    for t in list(app["push_tasks"]):
+        t.cancel()
+    await app["push"].close()
 
 
-def make_app(data_dir: Path = DATA) -> web.Application:
+def make_app(data_dir: Path = DATA, push=None) -> web.Application:
+    """`push`: klient z metodą `async send(token, env) -> int` i atrybutem `enabled` (testy podstawiają atrapę)."""
     app = web.Application(middlewares=[guard], client_max_size=MAX_ATT + 1024)
     app["store"] = Store(data_dir / "szept.db")
     app["sockets"] = defaultdict(set)
@@ -633,6 +682,35 @@ def make_app(data_dir: Path = DATA) -> web.Application:
         for ev in app["waiters"].get(account_id, ()):
             ev.set()
     app["wake"] = wake
+    app["push"] = push if push is not None else push_mod.from_env()
+    app["push_last"] = {}            # account_id -> monotonic ostatniego pusha (tylko w pamięci)
+    app["push_tasks"] = set()
+
+    async def send_push(account_id: str):
+        info = app["store"].get_push(account_id)
+        if not info:
+            return
+        status = await app["push"].send(info["token"], info["env"])
+        if status == 410:
+            app["store"].delete_push(account_id, info["token"])
+            log.info("push: usunięty martwy token (…%s)", info["token"][-6:])
+
+    def notify(account_id: str):
+        """Push dla konta bez otwartego WebSocketu, najwyżej raz na PUSH_MIN_INTERVAL; wysyłka w tle."""
+        if not app["push"].enabled or app["sockets"].get(account_id):
+            return
+        if not app["store"].get_push(account_id):
+            return
+        now = time.monotonic()
+        if now - app["push_last"].get(account_id, -1e9) < PUSH_MIN_INTERVAL:
+            return
+        app["push_last"][account_id] = now
+        if len(app["push_last"]) > 50_000:
+            app["push_last"].clear()
+        t = asyncio.create_task(send_push(account_id))
+        app["push_tasks"].add(t)
+        t.add_done_callback(app["push_tasks"].discard)
+    app["notify"] = notify
     app.add_routes([
         web.get("/", index),
         web.get("/prywatnosc", privacy),
@@ -652,6 +730,8 @@ def make_app(data_dir: Path = DATA) -> web.Application:
         web.post("/v1/attachments", post_attachment),
         web.get("/v1/attachments/{id}", get_attachment),
         web.delete("/v1/attachments/{id}", delete_attachment),
+        web.put("/v1/push", put_push),
+        web.delete("/v1/push", delete_push),
     ])
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)

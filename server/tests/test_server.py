@@ -1,4 +1,4 @@
-import base64, os, sys
+import asyncio, base64, os, sys
 import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import szept_server as S  # noqa: E402
@@ -11,6 +11,22 @@ REG = {"identity_key": B(1), "registration_id": 1234,
        "kyber_prekeys": [{"id": i, "key": B(20 + i), "signature": B(6)} for i in range(2)]}
 
 
+class FakePush:
+    """Atrapa klienta APNs: zapisuje wysyłki, odpowiada zadanym statusem."""
+    enabled = True
+
+    def __init__(self, status=200):
+        self.status, self.sent = status, []
+
+    async def send(self, token, env):
+        self.sent.append((token, env))
+        return self.status
+
+    async def close(self):
+        pass
+
+
+
 IP = lambda ip: {"CF-Connecting-IP": ip}   # noqa: E731 – klient testowy łączy się z 127.0.0.1, więc nagłówek CF jest honorowany
 
 
@@ -18,6 +34,16 @@ IP = lambda ip: {"CF-Connecting-IP": ip}   # noqa: E731 – klient testowy łąc
 async def cli(aiohttp_client, tmp_path):
     S._rate.clear()
     return await aiohttp_client(S.make_app(tmp_path))
+
+
+@pytest.fixture
+def cli_push(aiohttp_client, tmp_path):
+    """Klient z atrapą pusha: `cli, fake = await cli_push(status)`."""
+    async def make(status=200):
+        S._rate.clear()
+        fake = FakePush(status)
+        return await aiohttp_client(S.make_app(tmp_path, push=fake)), fake
+    return make
 
 
 async def register(cli, **over):
@@ -245,3 +271,118 @@ async def test_privacy_page(cli):
     r = await cli.get("/prywatnosc")
     assert r.status == 200 and "Polityka prywatności" in await r.text()
     assert r.headers["Content-Security-Policy"].startswith("default-src 'none'")
+
+
+# --- push APNs (0.3, docs/WERSJA-0.3.md §3) ----------------------------------------------------------------
+
+TOKEN = "ab" * 32
+PUSH = {"platform": "apns", "token": TOKEN, "env": "sandbox"}
+
+
+async def test_push_token_register_validate_delete(cli):
+    assert (await cli.put("/v1/push", json=PUSH)).status == 401
+    acc, h = await register(cli)
+    assert (await cli.put("/v1/push", json={**PUSH, "platform": "fcm"}, headers=h)).status == 400
+    assert (await cli.put("/v1/push", json={**PUSH, "env": "dev"}, headers=h)).status == 400
+    assert (await cli.put("/v1/push", json={**PUSH, "token": "zz" * 20}, headers=h)).status == 400
+    assert (await cli.put("/v1/push", json={**PUSH, "token": "ab" * 10}, headers=h)).status == 400
+    assert (await cli.put("/v1/push", json=PUSH, headers=h)).status == 204
+    st = cli.server.app["store"]
+    assert st.get_push(acc) == {"platform": "apns", "token": TOKEN, "env": "sandbox"}
+    assert (await cli.put("/v1/push", json={**PUSH, "token": "CD" * 32, "env": "production"}, headers=h)).status == 204
+    assert st.get_push(acc) == {"platform": "apns", "token": "cd" * 32, "env": "production"}   # nadpisanie, hex małymi
+    assert (await cli.delete("/v1/push", headers=h)).status == 204
+    assert st.get_push(acc) is None
+    assert (await cli.put("/v1/push", json=PUSH, headers=h)).status == 204
+    await cli.delete("/v1/accounts", headers=h)
+    assert st.get_push(acc) is None                                                          # kasowanie konta czyści token
+
+
+async def test_push_sent_without_ws_and_throttled(cli_push, monkeypatch):
+    cli, fake = await cli_push()
+    acc, h = await register(cli)
+    await cli.put("/v1/push", json=PUSH, headers=h)
+    r = await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(7)}]})
+    assert r.status == 200
+    await asyncio.sleep(0.05)
+    assert fake.sent == [(TOKEN, "sandbox")]
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(8)}]})          # <10 s: bez drugiego pusha
+    await asyncio.sleep(0.05)
+    assert len(fake.sent) == 1
+    monkeypatch.setattr(S, "PUSH_MIN_INTERVAL", 0.0)
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(9)}]})
+    await asyncio.sleep(0.05)
+    assert len(fake.sent) == 2
+    acc2, h2 = await register(cli)                                                           # konto bez tokenu: nic
+    await cli.put(f"/v1/messages/{acc2}", json={"messages": [{"content": B(7)}]})
+    await asyncio.sleep(0.05)
+    assert len(fake.sent) == 2
+
+
+async def test_push_not_sent_when_ws_open(cli_push):
+    cli, fake = await cli_push()
+    acc, h = await register(cli)
+    await cli.put("/v1/push", json=PUSH, headers=h)
+    ws = await cli.ws_connect("/v1/ws", headers=h)
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(7)}]})
+    msg = await ws.receive_json(timeout=2)
+    assert msg["type"] == "message"
+    await asyncio.sleep(0.05)
+    assert fake.sent == []
+    await ws.close()
+    await asyncio.sleep(0.05)
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(8)}]})          # po rozłączeniu: push
+    await asyncio.sleep(0.05)
+    assert fake.sent == [(TOKEN, "sandbox")]
+
+
+async def test_push_dead_token_is_removed(cli_push):
+    cli, fake = await cli_push(status=410)
+    acc, h = await register(cli)
+    await cli.put("/v1/push", json=PUSH, headers=h)
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(7)}]})
+    await asyncio.sleep(0.05)
+    assert fake.sent == [(TOKEN, "sandbox")]
+    assert cli.server.app["store"].get_push(acc) is None
+
+
+async def test_push_disabled_without_key(cli):
+    assert isinstance(cli.server.app["push"], S.push_mod.NullPush) and not cli.server.app["push"].enabled
+    acc, h = await register(cli)
+    await cli.put("/v1/push", json=PUSH, headers=h)
+    assert (await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(7)}]})).status == 200
+
+
+def test_apns_client_jwt_and_dead_token_mapping(tmp_path, monkeypatch):
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+    key = ec.generate_private_key(ec.SECP256R1())
+    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    (tmp_path / "AuthKey_TEST.p8").write_bytes(pem)
+    for k in ("SZEPT_APNS_KEY_PATH", "SZEPT_APNS_KEY_ID", "SZEPT_APNS_TEAM_ID"):
+        monkeypatch.delenv(k, raising=False)
+    assert isinstance(S.push_mod.from_env(), S.push_mod.NullPush)
+    monkeypatch.setenv("SZEPT_APNS_KEY_PATH", str(tmp_path / "AuthKey_TEST.p8"))
+    monkeypatch.setenv("SZEPT_APNS_KEY_ID", "TESTKEY123")
+    monkeypatch.setenv("SZEPT_APNS_TEAM_ID", "TEAM123456")
+    p = S.push_mod.from_env()
+    assert p.enabled and p.topic == "pl.plgpt.szept"
+    import jwt as pyjwt
+    tok = p.jwt()
+    assert pyjwt.get_unverified_header(tok) == {"alg": "ES256", "kid": "TESTKEY123", "typ": "JWT"}
+    pub = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    assert pyjwt.decode(tok, pub, algorithms=["ES256"])["iss"] == "TEAM123456"
+    assert p.jwt() == tok                                                                     # cache
+    assert S.push_mod.PAYLOAD["aps"]["alert"] == {"title": "Szept", "body": "Nowa wiadomość"}  # nigdy treści/nadawcy
+    asyncio.run(p.close())
+
+
+async def test_attachment_limit_32mb(cli, monkeypatch):
+    acc, h = await register(cli)
+    monkeypatch.setattr(S, "ACCOUNT_ATT_QUOTA", 100 * 1024 * 1024)
+    monkeypatch.setattr(S, "MAX_ATTACH_BYTES", 100 * 1024 * 1024)
+    assert S.MAX_ATT == 32 * 1024 * 1024
+    r = await cli.post("/v1/attachments", data=b"x" * (31 * 1024 * 1024), headers=h)
+    assert r.status == 201
+    r = await cli.post("/v1/attachments", data=b"x" * (33 * 1024 * 1024), headers=h)
+    assert r.status == 413

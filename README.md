@@ -30,7 +30,7 @@ szept/
 ## Uruchomienie
 ```bash
 # serwer
-cd server && python3 -m venv .venv && .venv/bin/pip install aiohttp pytest pytest-aiohttp && .venv/bin/python -m pytest -q tests
+cd server && python3 -m venv .venv && .venv/bin/pip install aiohttp "httpx[http2]" pyjwt cryptography pytest pytest-aiohttp && .venv/bin/python -m pytest -q tests
 ./run-server.sh                      # SZEPT_PORT, SZEPT_DATA, SZEPT_MSG_TTL_DAYS, SZEPT_ATT_TTL_DAYS w .env
 # apka
 cd vendor && ./fetch-libsignal.sh    # ~180 MB prebuilt z build-artifacts.signal.org, suma SHA-256 z GitHub
