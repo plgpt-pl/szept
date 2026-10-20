@@ -48,3 +48,4 @@ Serwer jest generyczny (koperty do losowych id) – ten sam backend obsłuży An
 - Polityka prywatności: https://szept.plgpt.pl/prywatnosc (static/prywatnosc.html, trasa /prywatnosc), kontakt szept@plgpt.pl (catch-all → Gmail).
 - Poza API (klika user w ASC): etykiety „App Privacy” (brak publicznego API), deklaracja szyfrowania przy KAŻDYM buildzie, finalne „Dodaj do recenzji”.
 - Zrzuty: iPhone 6,9" 1320×2868 + iPad 13" 2064×2752 z symulatorów (-demo), wgrywane do obu lokalizacji.
+- 20.10 19:52 UTC: wersja 0.2.0 (build 3) WYSŁANA do App Review (reviewSubmission w ~/.config/appstoreconnect/szept_review_submission), stan WAITING_FOR_REVIEW; App Privacy (User ID, App Functionality, nielinkowane, bez śledzenia) kliknięte przez usera.
