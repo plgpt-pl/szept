@@ -19,3 +19,4 @@ app/.build-*/
 
 # kopie zapasowe z poprawek bezpieczeństwa
 *.bak-sec-*
+docs/zrzuty/appstore/
