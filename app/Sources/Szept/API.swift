@@ -92,7 +92,7 @@ final class SzeptAPI {
     }
 
     func uploadAttachment(_ data: Data) async throws -> String {
-        let u: Uploaded = try JSONDecoder().decode(Uploaded.self, from: try await send(try request("POST", "v1/attachments", body: data, auth: false)))
+        let u: Uploaded = try JSONDecoder().decode(Uploaded.self, from: try await send(try request("POST", "v1/attachments", body: data, auth: true)))
         return u.id
     }
 

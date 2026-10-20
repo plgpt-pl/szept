@@ -16,3 +16,6 @@ app/Info.plist
 app/.build-archive/
 app/.build-device-rel/
 app/.build-*/
+
+# kopie zapasowe z poprawek bezpieczeństwa
+*.bak-sec-*

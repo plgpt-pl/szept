@@ -47,7 +47,7 @@ class SzeptApi(@Volatile var baseUrl: String, @Volatile var token: String?) {
     fun deliver(sealed: List<ByteArray>, to: String) { send(req("PUT", "v1/messages/$to", json.encodeToString(DeliverBody.serializer(), DeliverBody(sealed.map { DeliverBody.Item(it.b64()) })), auth = false)) }
     fun pending(): List<Pending> = call<PendingList>("GET", "v1/messages").messages
     fun ack(id: Long) { send(req("DELETE", "v1/messages/$id", auth = true)) }
-    fun uploadAttachment(data: ByteArray): String = json.decodeFromString<Uploaded>(String(send(req("POST", "v1/attachments", bytes = data, auth = false)))).id
+    fun uploadAttachment(data: ByteArray): String = json.decodeFromString<Uploaded>(String(send(req("POST", "v1/attachments", bytes = data, auth = true)))).id
     fun downloadAttachment(id: String): ByteArray = send(req("GET", "v1/attachments/$id", auth = false)).also {
         try { send(req("DELETE", "v1/attachments/$id", auth = false)) } catch (_: Exception) {}
     }

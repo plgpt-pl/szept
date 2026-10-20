@@ -22,7 +22,10 @@ szept/
 4. Wiadomość: Double Ratchet (libsignal) → koperta JSON z `account_id` nadawcy → **HPKE do klucza odbiorcy**. Serwer dostaje
    wyłącznie szyfrogram HPKE i nie wie, kto wysłał (wysyłka bez uwierzytelnienia, jak sealed sender).
 5. Odbiór przez WebSocket (`/v1/ws`) albo REST; koperta kasowana po potwierdzeniu. Załączniki: AES-256-GCM-SIV, klucz jedzie
-   w zaszyfrowanej wiadomości, plik na serwerze znika po pobraniu (albo po 7 dniach).
+   w zaszyfrowanej wiadomości, plik na serwerze znika po pobraniu (albo po 7 dniach). Wgranie załącznika wymaga tokenu
+   konta (limit 200 MB na konto, pula globalna `SZEPT_MAX_ATTACH_BYTES`) – blob nie wskazuje odbiorcy ani koperty, więc serwer
+   nadal nie wie, kto z kim rozmawia. WebSocket uwierzytelnia nagłówek `Authorization` albo podprotokół
+   `Sec-WebSocket-Protocol: szept, szept-token.<token>`; `?token=` tylko przy `SZEPT_ALLOW_QUERY_TOKEN=1`.
 
 ## Uruchomienie
 ```bash
