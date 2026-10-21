@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- tło -->
+    <radialGradient id="bg" cx="0.42" cy="0.38" r="0.85">
+      <stop offset="0" stop-color="#141A4A"/>
+      <stop offset="0.55" stop-color="#0B0F30"/>
+      <stop offset="1" stop-color="#05071A"/>
+    </radialGradient>
+    <radialGradient id="glowC" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3FD6FF" stop-opacity="0.38"/><stop offset="1" stop-color="#3FD6FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowM" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#D65CFF" stop-opacity="0.36"/><stop offset="1" stop-color="#D65CFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- neon -->
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5CE6FF"/><stop offset="0.5" stop-color="#8FA0FF"/><stop offset="1" stop-color="#E06CFF"/>
+    </linearGradient>
+    <linearGradient id="neonH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5CE6FF"/><stop offset="1" stop-color="#E06CFF"/>
+    </linearGradient>
+
+    <!-- szkło dymka -->
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A3F8E" stop-opacity="0.78"/>
+      <stop offset="0.5" stop-color="#1A2060" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#3A1A6E" stop-opacity="0.80"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.35"/>
+    </linearGradient>
+
+    <!-- fasety sowy -->
+    <linearGradient id="facetA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8FE0FF" stop-opacity="0.40"/><stop offset="1" stop-color="#B07BFF" stop-opacity="0.16"/>
+    </linearGradient>
+    <linearGradient id="facetB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8FE0FF" stop-opacity="0.18"/><stop offset="1" stop-color="#C08BFF" stop-opacity="0.34"/>
+    </linearGradient>
+    <linearGradient id="facetC" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#5CE6FF" stop-opacity="0.08"/><stop offset="1" stop-color="#E06CFF" stop-opacity="0.24"/>
+    </linearGradient>
+
+    <!-- oczy -->
+    <radialGradient id="eyeGlass" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#1B2666"/><stop offset="1" stop-color="#05071C"/>
+    </radialGradient>
+    <radialGradient id="irisC" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#E9FDFF"/><stop offset="0.35" stop-color="#7FEFFF"/><stop offset="0.8" stop-color="#1FB8E8"/><stop offset="1" stop-color="#0B6FA0"/>
+    </radialGradient>
+    <radialGradient id="irisM" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FDEBFF"/><stop offset="0.35" stop-color="#F09BFF"/><stop offset="0.8" stop-color="#C04CF0"/><stop offset="1" stop-color="#6C1FA0"/>
+    </radialGradient>
+    <radialGradient id="eyeGlowC" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#5CE6FF" stop-opacity="0.55"/><stop offset="1" stop-color="#5CE6FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="eyeGlowM" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#E06CFF" stop-opacity="0.55"/><stop offset="1" stop-color="#E06CFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- dziób, kłódka -->
+    <linearGradient id="beak" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F3A7FF"/><stop offset="1" stop-color="#A83CE0"/>
+    </linearGradient>
+    <linearGradient id="lockBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E3B8C"/><stop offset="0.5" stop-color="#141A4E"/><stop offset="1" stop-color="#2A1458"/>
+    </linearGradient>
+    <linearGradient id="lockSheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF" stop-opacity="0.28"/><stop offset="0.45" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shackle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9FF2FF"/><stop offset="0.5" stop-color="#5CE6FF"/><stop offset="1" stop-color="#2EB5E8"/>
+    </linearGradient>
+    <radialGradient id="keyGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#5CE6FF" stop-opacity="0.8"/><stop offset="1" stop-color="#5CE6FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- filtry -->
+    <filter id="bloomXL" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="bloomL" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="bloomS" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="blur2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="dropShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="22"/>
+      <feOffset dx="0" dy="26" result="o"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="b"/>
+      <feComposite in="b" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="inner"/>
+      <feFlood flood-color="#8FA0FF" flood-opacity="0.45"/>
+      <feComposite in2="inner" operator="in"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode/></feMerge>
+    </filter>
+
+    <clipPath id="bubbleClip">
+      <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"/>
+    </clipPath>
+  </defs>
+<g transform="translate(512,512) scale(0.80) translate(-512,-512)">
+
+  
+  <!-- ===== dymek: poświata ===== -->
+  <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"
+        fill="none" stroke="url(#neon)" stroke-width="34" stroke-linejoin="round" filter="url(#bloomXL)" opacity="0.75"/>
+
+  <!-- ===== dymek: szkło ===== -->
+  <g filter="url(#dropShadow)">
+    <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"
+          fill="url(#glass)"/>
+  </g>
+  <g clip-path="url(#bubbleClip)">
+    <!-- cień dolny i połysk górny -->
+    <rect x="140" y="180" width="760" height="680" fill="url(#bottomShade)"/>
+    <path d="M160 200 L880 200 L880 300 Q600 360 160 520 Z" fill="url(#sheen)"/>
+    <!-- wewnętrzna poświata krawędzi -->
+    <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"
+          fill="none" stroke="url(#neon)" stroke-width="26" filter="url(#bloomL)" opacity="0.45"/>
+  </g>
+  <!-- krawędź neonowa -->
+  <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"
+        fill="none" stroke="url(#neon)" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M232 196 h560 a76 76 0 0 1 76 76 v372 a76 76 0 0 1 -76 76 h-312 l-146 122 q-22 18 -22 -12 v-110 h-80 a76 76 0 0 1 -76 -76 v-372 a76 76 0 0 1 76 -76 z"
+        fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round" opacity="0.55"/>
+
+  <!-- ===== sowa low-poly ===== -->
+  <g id="owl" transform="translate(512,446) scale(1.08) translate(-512,-452)">
+    <!-- poświata za sową -->
+    <path d="M366 276 L420 330 L512 318 L604 330 L658 276 L694 400 L672 520 L580 590 L512 604 L444 590 L352 520 L330 400 Z"
+          fill="none" stroke="url(#neonH)" stroke-width="18" stroke-linejoin="round" filter="url(#bloomL)" opacity="0.55"/>
+    <!-- fasety -->
+    <g stroke="none">
+      <polygon points="366,276 420,330 330,400" fill="url(#facetA)"/>
+      <polygon points="658,276 604,330 694,400" fill="url(#facetB)"/>
+      <polygon points="420,330 512,318 512,390" fill="url(#facetB)"/>
+      <polygon points="512,318 604,330 512,390" fill="url(#facetA)"/>
+      <polygon points="420,330 512,390 436,440" fill="url(#facetC)"/>
+      <polygon points="420,330 436,440 330,400" fill="url(#facetA)"/>
+      <polygon points="604,330 588,440 512,390" fill="url(#facetC)"/>
+      <polygon points="604,330 694,400 588,440" fill="url(#facetB)"/>
+      <polygon points="512,390 436,440 512,470" fill="url(#facetB)"/>
+      <polygon points="512,390 512,470 588,440" fill="url(#facetA)"/>
+      <polygon points="330,400 436,440 352,520" fill="url(#facetC)"/>
+      <polygon points="352,520 436,440 444,590" fill="url(#facetB)"/>
+      <polygon points="436,440 512,470 512,548" fill="url(#facetA)"/>
+      <polygon points="436,440 512,548 444,590" fill="url(#facetC)"/>
+      <polygon points="694,400 588,440 672,520" fill="url(#facetA)"/>
+      <polygon points="672,520 588,440 580,590" fill="url(#facetC)"/>
+      <polygon points="588,440 512,470 512,548" fill="url(#facetB)"/>
+      <polygon points="588,440 512,548 580,590" fill="url(#facetA)"/>
+      <polygon points="444,590 512,548 512,604" fill="url(#facetB)"/>
+      <polygon points="512,604 512,548 580,590" fill="url(#facetC)"/>
+    </g>
+    <!-- krawędzie faset -->
+    <g fill="none" stroke="url(#neonH)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.75">
+      <path d="M420 330 L330 400 M604 330 L694 400"/>
+      <path d="M420 330 L512 390 L604 330 M512 318 L512 390"/>
+      <path d="M420 330 L436 440 L330 400 M604 330 L588 440 L694 400"/>
+      <path d="M512 390 L436 440 M512 390 L588 440 M512 390 L512 470"/>
+      <path d="M436 440 L352 520 M436 440 L444 590 M436 440 L512 470 M436 440 L512 548"/>
+      <path d="M588 440 L672 520 M588 440 L580 590 M588 440 L512 470 M588 440 L512 548"/>
+      <path d="M444 590 L512 548 L580 590 M512 548 L512 604"/>
+    </g>
+    <!-- kontur -->
+    <path d="M366 276 L420 330 L512 318 L604 330 L658 276 L694 400 L672 520 L580 590 L512 604 L444 590 L352 520 L330 400 Z"
+          fill="none" stroke="url(#neonH)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M366 276 L420 330 L512 318 L604 330 L658 276 L694 400 L672 520 L580 590 L512 604 L444 590 L352 520 L330 400 Z"
+          fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round" opacity="0.5"/>
+
+    <!-- oczy -->
+    <g>
+      <circle cx="436" cy="440" r="120" fill="url(#eyeGlowC)"/>
+      <circle cx="588" cy="440" r="120" fill="url(#eyeGlowM)"/>
+      <!-- lewe (cyjan) -->
+      <circle cx="436" cy="440" r="66" fill="url(#eyeGlass)"/>
+      <circle cx="436" cy="440" r="66" fill="none" stroke="#5CE6FF" stroke-width="12" filter="url(#bloomS)" opacity="0.9"/>
+      <circle cx="436" cy="440" r="66" fill="none" stroke="#9FF2FF" stroke-width="5"/>
+      <circle cx="436" cy="440" r="34" fill="url(#irisC)"/>
+      <circle cx="436" cy="440" r="34" fill="#5CE6FF" filter="url(#bloomS)" opacity="0.5"/>
+      <circle cx="436" cy="440" r="13" fill="#04101F"/>
+      <ellipse cx="420" cy="420" rx="11" ry="7" fill="#FFFFFF" opacity="0.9" transform="rotate(-30 420 420)"/>
+      <circle cx="452" cy="458" r="3.5" fill="#FFFFFF" opacity="0.7"/>
+      <!-- prawe (magenta) -->
+      <circle cx="588" cy="440" r="66" fill="url(#eyeGlass)"/>
+      <circle cx="588" cy="440" r="66" fill="none" stroke="#E06CFF" stroke-width="12" filter="url(#bloomS)" opacity="0.9"/>
+      <circle cx="588" cy="440" r="66" fill="none" stroke="#F5B5FF" stroke-width="5"/>
+      <circle cx="588" cy="440" r="34" fill="url(#irisM)"/>
+      <circle cx="588" cy="440" r="34" fill="#E06CFF" filter="url(#bloomS)" opacity="0.5"/>
+      <circle cx="588" cy="440" r="13" fill="#120418"/>
+      <ellipse cx="572" cy="420" rx="11" ry="7" fill="#FFFFFF" opacity="0.9" transform="rotate(-30 572 420)"/>
+      <circle cx="604" cy="458" r="3.5" fill="#FFFFFF" opacity="0.7"/>
+    </g>
+    <!-- dziób -->
+    <polygon points="512,476 544,506 512,552 480,506" fill="url(#beak)" stroke="#F7C9FF" stroke-width="2" stroke-linejoin="round"/>
+    <polygon points="512,476 544,506 512,506" fill="#FFFFFF" opacity="0.25"/>
+  </g>
+
+  <!-- ===== kłódka ===== -->
+  <g id="lock" transform="translate(690,560)">
+    <!-- poświata -->
+    <rect x="-6" y="88" width="212" height="180" rx="34" fill="#5CE6FF" filter="url(#bloomXL)" opacity="0.35"/>
+    <!-- pałąk (tył) -->
+    <path d="M44 92 V60 a56 56 0 0 1 112 0 V92" fill="none" stroke="#0A1030" stroke-width="30" stroke-linecap="round" opacity="0.6"/>
+    <path d="M44 92 V60 a56 56 0 0 1 112 0 V92" fill="none" stroke="url(#shackle)" stroke-width="22" stroke-linecap="round" filter="url(#bloomS)" opacity="0.9"/>
+    <path d="M44 92 V60 a56 56 0 0 1 112 0 V92" fill="none" stroke="url(#shackle)" stroke-width="20" stroke-linecap="round"/>
+    <path d="M44 92 V60 a56 56 0 0 1 112 0 V92" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.55" transform="translate(-4,-3)"/>
+    <!-- korpus -->
+    <g filter="url(#dropShadow)">
+      <rect x="0" y="88" width="200" height="166" rx="30" fill="url(#lockBody)"/>
+    </g>
+    <rect x="0" y="88" width="200" height="166" rx="30" fill="none" stroke="url(#neon)" stroke-width="12"/>
+    <rect x="0" y="88" width="200" height="166" rx="30" fill="none" stroke="#FFFFFF" stroke-width="2.5" opacity="0.5"/>
+    <rect x="12" y="98" width="176" height="70" rx="22" fill="url(#lockSheen)"/>
+    <!-- dziurka -->
+    <circle cx="100" cy="162" r="60" fill="url(#keyGlow)"/>
+    <circle cx="100" cy="156" r="20" fill="#5CE6FF" filter="url(#bloomS)"/>
+    <circle cx="100" cy="156" r="18" fill="#DFFBFF"/>
+    <rect x="90" y="166" width="20" height="46" rx="8" fill="#DFFBFF"/>
+    <rect x="90" y="166" width="20" height="46" rx="8" fill="#5CE6FF" filter="url(#bloomS)" opacity="0.8"/>
+  </g>
+</g>
+</svg>
