@@ -334,6 +334,19 @@ async def test_push_sent_without_ws_and_throttled(cli_push, monkeypatch):
     assert len(fake.sent) == 2
 
 
+async def test_push_skipped_for_non_urgent(cli_push):
+    cli, fake = await cli_push()
+    acc, h = await register(cli)
+    await cli.put("/v1/push", json=PUSH, headers=h)
+    r = await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(7), "urgent": False}]})   # potwierdzenie / „pisze…”
+    assert r.status == 200 and (await r.json())["queued"] == 1
+    await asyncio.sleep(0.05)
+    assert fake.sent == []
+    await cli.put(f"/v1/messages/{acc}", json={"messages": [{"content": B(8), "urgent": False}, {"content": B(9)}]})
+    await asyncio.sleep(0.05)
+    assert fake.sent == [(TOKEN, "sandbox")]                                                  # choć jedna pilna = push
+
+
 async def test_push_not_sent_when_ws_open(cli_push):
     cli, fake = await cli_push()
     acc, h = await register(cli)

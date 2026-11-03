@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -147,19 +148,33 @@ private fun Bullet(icon: ImageVector, text: String) = Row(Modifier.padding(verti
 }
 
 // ---------- lista (kontakty ∪ grupy po ostatniej aktywności) ----------
-private sealed class ChatItem(val key: String, val lastActivity: Long) {
-    class C(val c: Contact) : ChatItem("c:" + c.id, c.lastActivity)
-    class G(val g: Group) : ChatItem("g:" + g.id, g.lastActivity)
+private sealed class ChatItem(val key: String, val lastActivity: Long, val pinned: Boolean, val name: String) {
+    class C(val c: Contact, name: String) : ChatItem("c:" + c.id, c.lastActivity, c.pinned, name)
+    class G(val g: Group) : ChatItem("g:" + g.id, g.lastActivity, g.pinned, g.name)
 }
+
+/** Nazwa rozmowy do wyświetlenia: notatka dla siebie zawsze w bieżącym języku. */
+@Composable fun chatName(engine: Engine, c: Contact): String = if (engine.isSelf(c)) stringResource(R.string.note_to_self) else c.name
+
+val MUTE_OPTIONS = listOf(R.string.mute_1h to 3_600_000L, R.string.mute_8h to 8 * 3_600_000L, R.string.mute_week to 7 * 86_400_000L, R.string.mute_always to Long.MAX_VALUE)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(engine: Engine, nav: NavHostController) {
     val v by engine.db.version.collectAsState()
     val contacts = remember(v) { engine.db.contacts() }
-    val items = remember(v) { (contacts.map { ChatItem.C(it) } + engine.db.groups().map { ChatItem.G(it) }).sortedByDescending { it.lastActivity } }
+    val selfName = stringResource(R.string.note_to_self)
+    val all = remember(v, selfName) { (contacts.map { ChatItem.C(it, if (engine.isSelf(it)) selfName else it.name) } + engine.db.groups().map { ChatItem.G(it) })
+        .sortedWith(compareByDescending<ChatItem> { it.pinned }.thenByDescending { it.lastActivity }) }
     val conn by engine.connection.collectAsState()
     var plus by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val q = query.trim()
+    val items = remember(all, q) { if (q.isEmpty()) all else all.filter { it.name.contains(q, ignoreCase = true) } }
+    val found = remember(v, q) { if (q.isEmpty()) emptyList() else engine.db.search(q) }
+    val typing by engine.typing.collectAsState()
+    var muteFor by remember { mutableStateOf<ChatItem?>(null) }
+    val tick = typingTicker(typing)
     Scaffold(containerColor = Color.Transparent, topBar = {
         TopAppBar(title = { Text("Szept", fontWeight = FontWeight.Bold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             navigationIcon = { IconButton({ nav.navigate("settings") }) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
@@ -172,47 +187,117 @@ fun ChatListScreen(engine: Engine, nav: NavHostController) {
                 IconButton({ plus = true }) { Icon(Icons.Default.AddCircle, stringResource(R.string.add), tint = Sowa.cyan) }
                 DropdownMenu(plus, { plus = false }) {
                     DropdownMenuItem({ Text(stringResource(R.string.add_contact)) }, { plus = false; nav.navigate("add") }, leadingIcon = { Icon(Icons.Default.QrCode, null) })
-                    DropdownMenuItem({ Text(stringResource(R.string.new_group)) }, { plus = false; nav.navigate("newgroup") }, leadingIcon = { Icon(Icons.Default.Group, null) }, enabled = contacts.isNotEmpty())
+                    DropdownMenuItem({ Text(stringResource(R.string.new_group)) }, { plus = false; nav.navigate("newgroup") }, leadingIcon = { Icon(Icons.Default.Group, null) }, enabled = contacts.any { !engine.isSelf(it) })
                 }
             })
     }) { pad ->
-        if (items.isEmpty()) Column(Modifier.fillMaxSize().padding(pad).padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        if (all.none { it !is ChatItem.C || !engine.isSelf(it.c) }) Column(Modifier.fillMaxSize().padding(pad).padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Logo(90); Spacer(Modifier.height(14.dp))
             Text(stringResource(R.string.empty_title), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.empty_text), color = Sowa.textMuted, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 10.dp))
             Button({ nav.navigate("add") }) { Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.add_contact)) }
         } else LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "search") {
+                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.search_hint)) }, singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Search, null) }, shape = RoundedCornerShape(20.dp),
+                    trailingIcon = { if (query.isNotEmpty()) IconButton({ query = "" }) { Icon(Icons.Default.Close, stringResource(R.string.cancel)) } })
+            }
             items(items, key = { it.key }) { item ->
-                when (item) {
-                    is ChatItem.C -> ContactRow(engine, item.c) { nav.navigate("chat/${item.c.id}") }
-                    is ChatItem.G -> GroupRow(engine, item.g) { nav.navigate("group/${item.g.id}") }
+                var menu by remember { mutableStateOf(false) }
+                Box {
+                    when (item) {
+                        is ChatItem.C -> ContactRow(engine, item.c, typing = engine.typingIn(item.key, tick).isNotEmpty(), onLongClick = { menu = true }) { nav.navigate("chat/${item.c.id}") }
+                        is ChatItem.G -> GroupRow(engine, item.g, typing = engine.typingIn(item.key, tick).isNotEmpty(), onLongClick = { menu = true }) { nav.navigate("group/${item.g.id}") }
+                    }
+                    DropdownMenu(menu, { menu = false }) {
+                        val muted = when (item) { is ChatItem.C -> item.c.isMuted(); is ChatItem.G -> item.g.isMuted() }
+                        DropdownMenuItem({ Text(stringResource(if (item.pinned) R.string.unpin else R.string.pin)) }, {
+                            menu = false; when (item) { is ChatItem.C -> engine.setPinned(item.c, !item.pinned); is ChatItem.G -> engine.setPinned(item.g, !item.pinned) }
+                        }, leadingIcon = { Icon(Icons.Default.PushPin, null) })
+                        if (muted) DropdownMenuItem({ Text(stringResource(R.string.unmute)) }, {
+                            menu = false; when (item) { is ChatItem.C -> engine.mute(item.c, 0); is ChatItem.G -> engine.mute(item.g, 0) }
+                        }, leadingIcon = { Icon(Icons.Default.Notifications, null) })
+                        else DropdownMenuItem({ Text(stringResource(R.string.mute)) }, { menu = false; muteFor = item }, leadingIcon = { Icon(Icons.Default.NotificationsOff, null) })
+                    }
                 }
+            }
+            if (q.isNotEmpty() && items.isEmpty() && found.isEmpty()) item(key = "none") { Text(stringResource(R.string.search_none), color = Sowa.textMuted, modifier = Modifier.padding(8.dp)) }
+            if (found.isNotEmpty()) {
+                item(key = "found-h") { Text(stringResource(R.string.search_messages), color = Sowa.cyan, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
+                items(found, key = { "m:" + it.id }) { m -> SearchHitRow(engine, m, selfName) { nav.navigate(if (m.groupId != null) "group/${m.groupId}" else "chat/${m.contactId}") } }
+            }
+        }
+    }
+    muteFor?.let { item ->
+        AlertDialog({ muteFor = null }, title = { Text(stringResource(R.string.mute_q, item.name)) }, text = {
+            Column { MUTE_OPTIONS.forEach { (l, ms) -> Text(stringResource(l), Modifier.fillMaxWidth().clickable {
+                muteFor = null; when (item) { is ChatItem.C -> engine.mute(item.c, ms); is ChatItem.G -> engine.mute(item.g, ms) }
+            }.padding(vertical = 12.dp)) } }
+        }, confirmButton = {}, dismissButton = { TextButton({ muteFor = null }) { Text(stringResource(R.string.cancel)) } })
+    }
+}
+
+/** Zegar do wygaszania „pisze…”: tyka co sekundę, dopóki ktoś ma niewygasły wpis. */
+@Composable
+fun typingTicker(typing: Map<String, Map<String, Long>>): Long {
+    var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(typing) {
+        tick = System.currentTimeMillis()
+        while (typing.values.any { m -> m.values.any { it > System.currentTimeMillis() } }) { kotlinx.coroutines.delay(1000); tick = System.currentTimeMillis() }
+    }
+    return tick
+}
+
+@Composable
+private fun SearchHitRow(engine: Engine, m: Message, selfName: String, onClick: () -> Unit) {
+    val where = remember(m.id) { if (m.groupId != null) engine.db.group(m.groupId)?.name ?: "" else m.contactId?.let { id -> if (engine.isSelf(id)) selfName else engine.db.contact(id)?.name } ?: "" }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Sowa.card).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Row { Text(where, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1); Text(hhmm(m.sentAt), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall) }
+            Text((if (m.isMine) stringResource(R.string.you_prefix) else "") + m.text, color = Sowa.textMuted, maxLines = 2, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun TypingText() = Text(stringResource(R.string.typing), color = Sowa.cyan, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, maxLines = 1, style = MaterialTheme.typography.bodyMedium)
+
+@Composable
+private fun RowBadges(pinned: Boolean, muted: Boolean, disappear: Boolean, unread: Int) {
+    if (disappear) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
+    if (muted) Icon(Icons.Default.NotificationsOff, null, tint = Sowa.textMuted, modifier = Modifier.padding(start = 4.dp).size(12.dp))
+    if (pinned) Icon(Icons.Default.PushPin, null, tint = Sowa.textMuted, modifier = Modifier.padding(start = 4.dp).size(12.dp))
+    if (unread > 0) Text("$unread", color = Color.White, style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.padding(start = 6.dp).clip(CircleShape).background(if (muted) Brush2(Color.Gray) else Sowa.action).padding(horizontal = 7.dp, vertical = 2.dp))
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun ContactRow(engine: Engine, c: Contact, typing: Boolean = false, onLongClick: () -> Unit = {}, onClick: () -> Unit) {
+    val last = remember(c, engine.db.version.collectAsState().value) { engine.db.lastMessage(c.id) }
+    val self = engine.isSelf(c)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Sowa.card).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (self) SelfAvatar(44) else Avatar(c.name, 44); Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(chatName(engine, c), fontWeight = FontWeight.SemiBold)
+                if (c.verified && !self) Icon(Icons.Default.Verified, null, tint = Sowa.ok, modifier = Modifier.size(14.dp).padding(start = 2.dp))
+                if (c.identityChanged) Icon(Icons.Default.Warning, null, tint = Sowa.warn, modifier = Modifier.size(14.dp).padding(start = 2.dp))
+                Spacer(Modifier.weight(1f)); Text(timeAgo(c.lastActivity), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (typing) Box(Modifier.weight(1f)) { TypingText() }
+                else Text(if (last == null) stringResource(if (self) R.string.note_to_self_hint else R.string.no_messages) else (if (last.isMine && !self) stringResource(R.string.you_prefix) else "") + last.summary(),
+                    color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                RowBadges(c.pinned, c.isMuted(), c.disappearAfter > 0, c.unread)
             }
         }
     }
 }
 
 @Composable
-fun ContactRow(engine: Engine, c: Contact, onClick: () -> Unit) {
-    val last = remember(c, engine.db.version.collectAsState().value) { engine.db.lastMessage(c.id) }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Sowa.card).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Avatar(c.name, 44); Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(c.name, fontWeight = FontWeight.SemiBold)
-                if (c.verified) Icon(Icons.Default.Verified, null, tint = Sowa.ok, modifier = Modifier.size(14.dp).padding(start = 2.dp))
-                if (c.identityChanged) Icon(Icons.Default.Warning, null, tint = Sowa.warn, modifier = Modifier.size(14.dp).padding(start = 2.dp))
-                Spacer(Modifier.weight(1f)); Text(timeAgo(c.lastActivity), color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (last == null) stringResource(R.string.no_messages) else (if (last.isMine) stringResource(R.string.you_prefix) else "") + last.summary(),
-                    color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                if (c.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
-                if (c.unread > 0) Text("${c.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 6.dp).clip(CircleShape).background(Sowa.action).padding(horizontal = 7.dp, vertical = 2.dp))
-            }
-        }
-    }
+fun SelfAvatar(size: Int = 44) = Box(Modifier.size(size.dp).clip(CircleShape).background(Sowa.action), contentAlignment = Alignment.Center) {
+    Icon(Icons.Default.Bookmark, null, tint = Color.White, modifier = Modifier.size((size * 0.5).dp))
 }
 
 @Composable
@@ -223,11 +308,12 @@ fun GroupAvatar(size: Int = 44) = Box(Modifier.size(size.dp).clip(CircleShape).b
 /** Nazwa nadawcy cudzej wiadomości grupowej: z kontaktu, inaczej „Nieznany”. */
 fun senderName(engine: Engine, m: Message): String = m.senderId?.let { engine.db.contact(it)?.name } ?: Strings.get(R.string.unknown)
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
+fun GroupRow(engine: Engine, g: Group, typing: Boolean = false, onLongClick: () -> Unit = {}, onClick: () -> Unit) {
     val v by engine.db.version.collectAsState()
     val last = remember(g, v) { engine.db.lastMessageForGroup(g.id) }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Sowa.card).clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Sowa.card).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
         GroupAvatar(44); Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -237,11 +323,10 @@ fun GroupRow(engine: Engine, g: Group, onClick: () -> Unit) {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val who = when { last == null -> ""; last.isMine -> stringResource(R.string.you_prefix); last.senderId != null -> senderName(engine, last) + ": "; else -> "" }
-                Text(if (last == null) stringResource(R.string.no_messages) else who + last.summary(),
+                if (typing) Box(Modifier.weight(1f)) { TypingText() }
+                else Text(if (last == null) stringResource(R.string.no_messages) else who + last.summary(),
                     color = Sowa.textMuted, maxLines = 1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                if (g.disappearAfter > 0) Icon(Icons.Default.Timer, null, tint = Sowa.textMuted, modifier = Modifier.size(12.dp))
-                if (g.unread > 0) Text("${g.unread}", color = Color.White, style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 6.dp).clip(CircleShape).background(Sowa.action).padding(horizontal = 7.dp, vertical = 2.dp))
+                RowBadges(g.pinned, g.isMuted(), g.disappearAfter > 0, g.unread)
             }
         }
     }
@@ -326,7 +411,8 @@ fun ContactInfoScreen(engine: Engine, nav: NavHostController, id: String) {
     val v by engine.db.version.collectAsState()
     val c = remember(v) { engine.db.contact(id) } ?: return
     var name by remember { mutableStateOf(c.name) }
-    val safety = remember(c.identityKey) { try { engine.proto.safetyNumber(c.id, c.identityKey) } catch (e: Exception) { Strings.get(R.string.unavailable) } }
+    val self = engine.isSelf(c)
+    val safety = remember(c.identityKey) { if (self) "" else try { engine.proto.safetyNumber(c.id, c.identityKey) } catch (e: Exception) { Strings.get(R.string.unavailable) } }
     var confirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text(stringResource(R.string.contact)) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
@@ -334,12 +420,16 @@ fun ContactInfoScreen(engine: Engine, nav: NavHostController, id: String) {
         Column(Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Card2 {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(name.ifEmpty { "?" }, 56); Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(name, { name = it; c.name = it; engine.db.save(c) }, Modifier.weight(1f), label = { Text(stringResource(R.string.name)) }, singleLine = true)
+                    if (self) { SelfAvatar(56); Spacer(Modifier.width(12.dp)); Text(stringResource(R.string.note_to_self), style = MaterialTheme.typography.titleMedium) }
+                    else {
+                        Avatar(name.ifEmpty { "?" }, 56); Spacer(Modifier.width(12.dp))
+                        OutlinedTextField(name, { name = it; c.name = it; engine.db.save(c) }, Modifier.weight(1f), label = { Text(stringResource(R.string.name)) }, singleLine = true)
+                    }
                 }
-                Text(stringResource(R.string.id_label, c.id), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
+                Text(if (self) stringResource(R.string.note_to_self_info) else stringResource(R.string.id_label, c.id), fontFamily = if (self) null else FontFamily.Monospace,
+                    style = if (self) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall, color = Sowa.textMuted, modifier = Modifier.padding(top = 8.dp))
             }
-            Card2 {
+            if (!self) Card2 {
                 Text(stringResource(R.string.safety_number), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
                 Text(safety, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(vertical = 8.dp))
                 Text(stringResource(R.string.safety_hint), color = Sowa.textMuted, style = MaterialTheme.typography.bodySmall)
@@ -352,10 +442,10 @@ fun ContactInfoScreen(engine: Engine, nav: NavHostController, id: String) {
                     RadioButton(c.disappearAfter == s, null); Text(stringResource(l))
                 } }
             }
-            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.delete_chat_contact)) }
+            OutlinedButton({ confirm = true }, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text(stringResource(if (self) R.string.clear_notes else R.string.delete_chat_contact)) }
         }
     }
-    if (confirm) AlertDialog({ confirm = false }, title = { Text(stringResource(R.string.delete_chat_q, c.name)) }, text = { Text(stringResource(R.string.delete_chat_text)) },
+    if (confirm) AlertDialog({ confirm = false }, title = { Text(if (self) stringResource(R.string.clear_notes_q) else stringResource(R.string.delete_chat_q, c.name)) }, text = { Text(stringResource(if (self) R.string.clear_notes_text else R.string.delete_chat_text)) },
         confirmButton = { TextButton({ engine.delete(c); confirm = false; nav.popBackStack("list", false) }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton({ confirm = false }) { Text(stringResource(R.string.cancel)) } })
 }
@@ -370,6 +460,8 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
     var listen by remember { mutableStateOf(engine.listenInBackground) }
     var lock by remember { mutableStateOf(engine.appLock) }
     var screenSec by remember { mutableStateOf(engine.screenSecurity) }
+    var readRc by remember { mutableStateOf(engine.readReceipts) }
+    var typingOn by remember { mutableStateOf(engine.typingIndicators) }
     var counts by remember { mutableStateOf("…") }
     var confirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -394,6 +486,17 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(stringResource(R.string.listen_bg)); Text(stringResource(R.string.listen_bg_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
                     Switch(listen, { listen = it; engine.listenInBackground = it; if (it) ListenService.start(ctx) else ListenService.stop(ctx) })
+                }
+            }
+            Card2 {
+                Text(stringResource(R.string.privacy), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text(stringResource(R.string.read_receipts)); Text(stringResource(R.string.read_receipts_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
+                    Switch(readRc, { readRc = it; engine.readReceipts = it })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text(stringResource(R.string.typing_indicators)); Text(stringResource(R.string.typing_indicators_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
+                    Switch(typingOn, { typingOn = it; engine.typingIndicators = it })
                 }
             }
             Card2 {
@@ -425,7 +528,7 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
 @Composable
 fun NewGroupScreen(engine: Engine, nav: NavHostController) {
     val v by engine.db.version.collectAsState()
-    val contacts = remember(v) { engine.db.contacts() }
+    val contacts = remember(v) { engine.db.contacts().filter { !engine.isSelf(it) } }
     var name by remember { mutableStateOf("") }
     val selected = remember { mutableStateListOf<String>() }
     var busy by remember { mutableStateOf(false) }
@@ -471,7 +574,7 @@ fun GroupInfoScreen(engine: Engine, nav: NavHostController, id: String) {
     val v by engine.db.version.collectAsState()
     val g = remember(v) { engine.db.group(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack("list", false) }; return }
     val members = remember(v) { g.members.map { mid -> engine.db.contact(mid) ?: Contact(mid, Strings.get(R.string.unknown_short, mid.take(6)), ByteArray(0), fromUnknown = true) } }
-    val others = remember(v) { engine.db.contacts().filter { it.id !in g.members } }
+    val others = remember(v) { engine.db.contacts().filter { it.id !in g.members && !engine.isSelf(it) } }
     var name by remember(g.name) { mutableStateOf(g.name) }
     var addDialog by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }

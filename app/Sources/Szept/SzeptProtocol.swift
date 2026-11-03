@@ -239,9 +239,12 @@ final class SzeptProtocol {
 // MARK: - Treść wiadomości (po odszyfrowaniu)
 
 struct MessageContent: Codable {
+    /// Koperty sterujące nie budzą telefonu pushem (`urgent: false`, docs/WERSJA-0.4.md §1.3).
+    var isUrgent: Bool { ![.receipt, .typing, .reaction, .edit, .delete].contains(kind) }
+
     /// Nieznany rodzaj (nowszy klient) dekoduje się jako `.unknown` i jest ignorowany – nigdy nie wysyłany.
     enum Kind: String, Codable {
-        case text, image, receipt, timer, group, file, audio, reaction, edit, delete, unknown
+        case text, image, receipt, timer, group, file, audio, reaction, edit, delete, typing, unknown
         init(from decoder: Decoder) throws {
             let raw = try decoder.singleValueContainer().decode(String.self)
             self = Kind(rawValue: raw) ?? .unknown
@@ -262,7 +265,7 @@ struct MessageContent: Codable {
     var g: String?         // id grupy – w każdej wiadomości dotyczącej grupy
     var gname: String?     // nazwa grupy (kind: group, op: set)
     var members: [Member]? // pełna lista członków łącznie z nadawcą (kind: group, op: set)
-    var op: String?        // "set" | "leave" (kind: group); "set" | "remove" (kind: reaction)
+    var op: String?        // "set" | "leave" (kind: group); "set" | "remove" (kind: reaction); "read" (kind: receipt); "start" | "stop" (kind: typing)
     // 0.3 (docs/WERSJA-0.3.md)
     var r: String?         // id wiadomości, na którą odpowiadamy
     var fn: String?        // nazwa pliku (kind: file)

@@ -23,6 +23,12 @@ final class Engine {
     private var socketTask: Task<Void, Never>?
     private var expiryTimer: Timer?
     private var started = false
+    // 0.4 – stan w pamięci (docs/WERSJA-0.4.md)
+    var typing: [String: [String: Date]] = [:]        // id rozmowy → (nadawca → wygasa)
+    var typingSentAt: [String: Date] = [:]
+    var typingStop: [String: Task<Void, Never>] = [:]
+    var lastReadSent: [String: String] = [:]          // id kontaktu → id ostatniej wiadomości potwierdzonej jako przeczytana
+    var readDebounce: [String: Task<Void, Never>] = [:]
     var context: ModelContext { container.mainContext }
 
     static let shared: Engine = {
@@ -101,6 +107,7 @@ final class Engine {
     func start() {
         guard isRegistered, !started else { return }
         started = true
+        ensureNoteToSelf()
         if CommandLine.arguments.contains("-demo") { connection = .online; return }   // zrzuty: bez sieci, ale „online”
         connect()
         expiryTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
@@ -202,7 +209,9 @@ final class Engine {
 
     func delete(_ c: Contact) {
         for m in c.messages { removeMedia(m) }
-        store.forgetIdentityAndSession(for: (try? SzeptProtocol.address(c.id)) ?? ProtocolAddressDummy.value)
+        if !isNoteToSelf(c) {   // notatka: NIE ruszać magazynu kluczy pod własnym adresem
+            store.forgetIdentityAndSession(for: (try? SzeptProtocol.address(c.id)) ?? ProtocolAddressDummy.value)
+        }
         context.delete(c)
         try? context.save()
     }
@@ -216,11 +225,12 @@ final class Engine {
     }
 
     func deliver(_ content: MessageContent, to c: Contact) async throws {
+        if isNoteToSelf(c) { return }                  // notatka dla siebie nigdy nie wychodzi z telefonu
         try await ensureSession(c)
         var content = content
         if !displayName.isEmpty { content.name = displayName }
         let sealed = try proto.seal(try JSONEncoder().encode(content), to: c.id, recipientIdentity: c.identityKey)
-        try await api.deliver([sealed], to: c.id)
+        try await api.deliver([sealed], to: c.id, urgent: content.isUrgent)
     }
 
     // MARK: wysyłanie (wspólne dla 1:1 i grup – docs/WERSJA-0.3.md)
@@ -308,7 +318,8 @@ final class Engine {
     }
 
     /// Szyfruje, wgrywa i wysyła treść z załącznikiem (image/file/audio); używane też przy ponawianiu.
-    private func uploadAndSend(_ m: Message, data: Data, to t: ChatTarget) async {
+    func uploadAndSend(_ m: Message, data: Data, to t: ChatTarget) async {
+        if case .contact(let c) = t, isNoteToSelf(c) { m.status = .sent; try? context.save(); return }   // plik zostaje lokalnie
         do {
             let (ct, key) = try SzeptProtocol.encryptAttachment(data)
             let id = try await api.uploadAttachment(ct)
@@ -418,6 +429,8 @@ final class Engine {
         }
         guard let content = try? JSONDecoder().decode(MessageContent.self, from: opened.plaintext) else { return }
         let identity = opened.senderIdentity.serialize()
+        if opened.sender == accountId { return }                                      // koperta „od siebie” – notatka nigdy nie idzie przez serwer
+        if (content.kind == .typing || content.kind == .receipt) && contact(id: opened.sender) == nil { return }   // sterowanie od obcego nie zakłada kontaktu
         let c: Contact
         if let known = contact(id: opened.sender) {
             c = known
@@ -441,16 +454,20 @@ final class Engine {
         case .text:
             guard !c.messages.contains(where: { $0.id == content.id }) else { break }
             let m = newIncoming(content, from: c, in: t)
-            context.insert(m); bump(t); notifyLocally()
+            context.insert(m); bump(t); notifyLocally(t)
             Task { await sendReceipt(for: content.id, to: c) }
         case .image:
             guard let att = content.att, !c.messages.contains(where: { $0.id == content.id }) else { break }
             let m = newIncoming(content, from: c, in: t)
             m.kind = .image; m.attachmentW = att.w; m.attachmentH = att.h
-            context.insert(m); bump(t); notifyLocally()
+            context.insert(m); bump(t); notifyLocally(t)
             download(att, into: m, ext: "jpg", receiptFor: content.id, to: c)
         case .receipt:
-            if let ref = content.ref, let m = c.messages.first(where: { $0.id == ref }) { m.status = .delivered }
+            if content.op == "read" { applyRead(ref: content.ref, from: c) }
+            else if let ref = content.ref, let m = c.messages.first(where: { $0.id == ref }), m.status != .read { m.status = .delivered }
+        case .typing:
+            setTyping(content.op == "start", sender: c.id, in: t)
+            return
         case .timer:
             c.disappearAfter = content.expire ?? 0
             let note = Message(contact: c, text: (content.expire ?? 0) > 0 ? String(localized: "\(c.name): znikające wiadomości \(Durations.label(content.expire!))") : String(localized: "\(c.name) wyłączył(a) znikające wiadomości"), isMine: false)
@@ -471,6 +488,7 @@ final class Engine {
         case .group(let g): m = Message(id: content.id, group: g, text: content.text ?? "", isMine: false, sentAt: Date(timeIntervalSince1970: content.ts)); m.senderId = c.id
         }
         m.status = .delivered; m.replyToId = content.r
+        typing[t.id]?.removeValue(forKey: c.id)
         if let e = content.expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
         return m
     }
@@ -503,7 +521,7 @@ final class Engine {
             guard let att = content.att, !t.messages.contains(where: { $0.id == content.id }) else { return true }
             let m = newIncoming(content, from: c, in: t)
             m.kind = content.kind; m.fileName = content.fn.map { String($0.prefix(120)) }; m.mimeType = content.mime; m.duration = content.dur ?? 0
-            context.insert(m); bump(t); notifyLocally()
+            context.insert(m); bump(t); notifyLocally(t)
             let ext = content.kind == .audio ? "m4a" : ((content.fn as NSString?)?.pathExtension ?? "bin")
             download(att, into: m, ext: ext, receiptFor: content.id, to: t.isGroup ? nil : c)
             return true
@@ -536,7 +554,10 @@ final class Engine {
         if let e = expire, e > 0 { m.expiresAt = Date().addingTimeInterval(TimeInterval(e)) }
     }
 
-    func markRead(_ c: Contact) { if c.unread != 0 { c.unread = 0; try? context.save() } }
+    func markRead(_ c: Contact) {
+        if c.unread != 0 { c.unread = 0; try? context.save() }
+        scheduleReadReceipt(c)
+    }
 
     func purgeExpired() {
         let now = Date()
@@ -559,8 +580,8 @@ final class Engine {
     }
 
     /// Powiadomienie lokalne bez treści i bez nadawcy (gdy apka w tle, a gniazdo jeszcze żyje).
-    private func notifyLocally() {
-        guard UIApplication.shared.applicationState != .active else { return }
+    private func notifyLocally(_ t: ChatTarget) {
+        guard UIApplication.shared.applicationState != .active, !t.isMuted else { return }
         let content = UNMutableNotificationContent()
         content.title = "Szept"
         content.body = String(localized: "Nowa wiadomość")
@@ -625,6 +646,10 @@ enum ChatTarget: Identifiable, Hashable {
     var unread: Int { switch self { case .contact(let c): return c.unread; case .group(let g): return g.unread } }
     var messages: [Message] { switch self { case .contact(let c): return c.messages; case .group(let g): return g.messages } }
     var isGroup: Bool { if case .group = self { return true } else { return false } }
+    var pinned: Bool { switch self { case .contact(let c): return c.pinned; case .group(let g): return g.pinned } }
+    var mutedUntil: Date? { switch self { case .contact(let c): return c.mutedUntil; case .group(let g): return g.mutedUntil } }
+    var isMuted: Bool { (mutedUntil ?? .distantPast) > Date() }
+    var lastActivity: Date { switch self { case .contact(let c): return c.lastActivity; case .group(let g): return g.lastActivity } }
 }
 
 extension Engine {
@@ -763,7 +788,7 @@ extension Engine {
                 context.insert(g)
                 groupNote(g, String(localized: "\(c.name) dodał(a) Cię do grupy"), mine: false)
                 g.unread = 1
-                notifyLocally()
+                notifyLocally(.group(g))
             }
         case .group where content.op == "leave":
             guard let g = existing, g.members.contains(c.id) else { return }
@@ -775,12 +800,12 @@ extension Engine {
         case .text:
             guard let g = existing, g.members.contains(c.id), !g.messages.contains(where: { $0.id == content.id }) else { return }
             let m = newIncoming(content, from: c, in: .group(g))
-            context.insert(m); bump(.group(g)); notifyLocally()
+            context.insert(m); bump(.group(g)); notifyLocally(.group(g))
         case .image:
             guard let g = existing, g.members.contains(c.id), let att = content.att, !g.messages.contains(where: { $0.id == content.id }) else { return }
             let m = newIncoming(content, from: c, in: .group(g))
             m.kind = .image; m.attachmentW = att.w; m.attachmentH = att.h
-            context.insert(m); bump(.group(g)); notifyLocally()
+            context.insert(m); bump(.group(g)); notifyLocally(.group(g))
             download(att, into: m, ext: "jpg", receiptFor: content.id, to: nil)
         case .file, .audio, .reaction, .edit, .delete, .unknown:
             guard let g = existing, g.members.contains(c.id) else { return }
@@ -791,6 +816,9 @@ extension Engine {
             groupNote(g, g.disappearAfter > 0 ? String(localized: "\(c.name): znikające wiadomości \(Durations.label(g.disappearAfter))") : String(localized: "\(c.name) wyłączył(a) znikające wiadomości"), mine: false)
         case .receipt:
             break   // dla grup nie ma potwierdzeń odbioru
+        case .typing:
+            guard let g = existing, g.members.contains(c.id) else { return }
+            setTyping(content.op == "start", sender: c.id, in: .group(g))
         }
     }
 }

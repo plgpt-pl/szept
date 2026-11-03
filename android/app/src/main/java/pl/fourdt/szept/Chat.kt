@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -73,8 +74,12 @@ fun ChatScreen(engine: Engine, nav: NavHostController, id: String) {
     val v by engine.db.version.collectAsState()
     val contact = remember(v) { engine.db.contact(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val messages = remember(v) { engine.db.messages(id) }
-    LaunchedEffect(v) { engine.markRead(contact) }
-    ChatBody(engine, nav, title = contact.name, messages = messages, disappearAfter = contact.disappearAfter,
+    LaunchedEffect(v) { engine.markRead(contact); engine.chatVisible(contact) }
+    val typing by engine.typing.collectAsState()
+    val tick = typingTicker(typing)
+    val isTyping = engine.typingIn("c:$id", tick).isNotEmpty()
+    ChatBody(engine, nav, title = chatName(engine, contact), subtitle = if (isTyping) stringResource(R.string.typing) else null, subtitleAccent = isTyping,
+        messages = messages, disappearAfter = contact.disappearAfter, onDraft = { engine.composing(contact, null, it) },
         onSetDisappear = { engine.setDisappear(it, contact) }, infoRoute = "contact/$id", infoLabel = stringResource(R.string.info_verify),
         onSendText = { t, r -> engine.sendText(t, contact, r) }, onSendImage = { b, r -> engine.sendImage(b, contact, r) },
         onSendFile = { d, n, m, r -> engine.sendFile(d, n, m, contact, r) }, onSendAudio = { d, s, r -> engine.sendAudio(d, s, contact, r) }, showSender = false) {
@@ -90,7 +95,12 @@ fun GroupChatScreen(engine: Engine, nav: NavHostController, id: String) {
     val group = remember(v) { engine.db.group(id) } ?: run { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val messages = remember(v) { engine.db.messagesForGroup(id) }
     LaunchedEffect(v) { engine.markRead(group) }
-    ChatBody(engine, nav, title = group.name, subtitle = pluralStringResource(R.plurals.members, group.members.size + 1, group.members.size + 1), messages = messages, disappearAfter = group.disappearAfter,
+    val typing by engine.typing.collectAsState()
+    val tick = typingTicker(typing)
+    val typers = engine.typingIn("g:$id", tick).map { mid -> engine.db.contact(mid)?.name ?: Strings.get(R.string.unknown) }
+    val typingLabel = when (typers.size) { 0 -> null; 1 -> stringResource(R.string.typing_one, typers[0]); 2 -> stringResource(R.string.typing_two, typers[0], typers[1]); else -> stringResource(R.string.typing_many) }
+    ChatBody(engine, nav, title = group.name, subtitle = typingLabel ?: pluralStringResource(R.plurals.members, group.members.size + 1, group.members.size + 1), subtitleAccent = typingLabel != null,
+        messages = messages, disappearAfter = group.disappearAfter, onDraft = { engine.composing(null, group, it) },
         onSetDisappear = { engine.setDisappear(it, group) }, infoRoute = "groupinfo/$id", infoLabel = stringResource(R.string.group_info),
         onSendText = { t, r -> engine.sendText(t, group, r) }, onSendImage = { b, r -> engine.sendImage(b, group, r) },
         onSendFile = { d, n, m, r -> engine.sendFile(d, n, m, group, r) }, onSendAudio = { d, s, r -> engine.sendAudio(d, s, group, r) }, showSender = true) {}
@@ -100,7 +110,8 @@ private class Picked(val data: ByteArray, val name: String, val mime: String?)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subtitle: String? = null, messages: List<Message>, disappearAfter: Int,
+private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subtitle: String? = null, subtitleAccent: Boolean = false, messages: List<Message>, disappearAfter: Int,
+                     onDraft: (String) -> Unit,
                      onSetDisappear: suspend (Int) -> Unit, infoRoute: String, infoLabel: String,
                      onSendText: suspend (String, String?) -> Unit, onSendImage: suspend (Bitmap, String?) -> Unit,
                      onSendFile: suspend (ByteArray, String, String?, String?) -> Unit, onSendAudio: suspend (ByteArray, Double, String?) -> Unit,
@@ -112,6 +123,7 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
     var replyTo by remember { mutableStateOf<Message?>(null) }
     var editing by remember { mutableStateOf<Message?>(null) }
     var reactFor by remember { mutableStateOf<Message?>(null) }
+    var forwardFor by remember { mutableStateOf<Message?>(null) }
     var recording by remember { mutableStateOf(false) }
     var recordStart by remember { mutableLongStateOf(0L) }
     val scope = rememberCoroutineScope()
@@ -149,7 +161,7 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
 
     Scaffold(containerColor = Color.Transparent, topBar = {
-        TopAppBar(title = { Column { Text(title, maxLines = 1); subtitle?.let { Text(it, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall) } } },
+        TopAppBar(title = { Column { Text(title, maxLines = 1); subtitle?.let { Text(it, color = if (subtitleAccent) Sowa.cyan else Sowa.textMuted, fontStyle = if (subtitleAccent) FontStyle.Italic else null, style = MaterialTheme.typography.labelSmall) } } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = {
@@ -181,7 +193,7 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
                             DropdownMenuItem({ Text(stringResource(R.string.file)) }, { attach = false; filePicker.launch(arrayOf("*/*")) }, leadingIcon = { Icon(Icons.Default.Description, null) })
                         }
                     }
-                    OutlinedTextField(draft, { draft = it }, Modifier.weight(1f), placeholder = { Text(stringResource(if (editing != null) R.string.new_text_hint else R.string.compose_hint)) }, maxLines = 6, shape = RoundedCornerShape(20.dp))
+                    OutlinedTextField(draft, { draft = it; if (editing == null) onDraft(it) }, Modifier.weight(1f), placeholder = { Text(stringResource(if (editing != null) R.string.new_text_hint else R.string.compose_hint)) }, maxLines = 6, shape = RoundedCornerShape(20.dp))
                 }
                 Spacer(Modifier.width(8.dp))
                 if (draft.isBlank() && editing == null) {
@@ -212,14 +224,42 @@ private fun ChatBody(engine: Engine, nav: NavHostController, title: String, subt
                         onReply = { replyTo = m; editing = null }, onReact = { reactFor = m },
                         onReactTap = { e -> scope.launch { engine.react(m, e) } },
                         onEdit = { editing = m; replyTo = null; draft = m.text },
-                        onDeleteAll = { scope.launch { engine.deleteForAll(m) } }, onDeleteLocal = { engine.deleteLocally(m) },
+                        onDeleteAll = { scope.launch { engine.deleteForAll(m) } }, onDeleteLocal = { engine.deleteLocally(m) }, onForward = { forwardFor = m },
                         onQuoteTap = { id -> indexById[id]?.let { i -> scope.launch { listState.animateScrollToItem(i) } } })
                 }
             }
         }
     }
     preview?.let { bmp -> Box(Modifier.fillMaxSize().background(Color.Black).clickable { preview = null }, contentAlignment = Alignment.Center) { Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth()) } }
+    forwardFor?.let { m -> ForwardDialog(engine, onDismiss = { forwardFor = null }) { c, g ->
+        forwardFor = null
+        scope.launch {
+            try { if (g != null) engine.forward(m, g) else engine.forward(m, c!!); Toast.makeText(ctx, ctx.getString(R.string.forwarded), Toast.LENGTH_SHORT).show() }
+            catch (e: Exception) { Toast.makeText(ctx, e.message ?: ctx.getString(R.string.forward_failed), Toast.LENGTH_LONG).show() }
+        }
+    } }
     reactFor?.let { m -> EmojiDialog(mine = engine.accountId?.let { m.reactionMap()[it] }, onPick = { e -> reactFor = null; scope.launch { engine.react(m, e) } }, onDismiss = { reactFor = null }) }
+}
+
+/** Wybór rozmowy do przekazania (z notatką dla siebie, bez opuszczonych grup). */
+@Composable
+private fun ForwardDialog(engine: Engine, onDismiss: () -> Unit, onPick: (Contact?, Group?) -> Unit) {
+    val contacts = remember { engine.db.contacts() }
+    val groups = remember { engine.db.groups().filter { !it.left } }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.forward_to)) }, text = {
+        LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            items(contacts.sortedByDescending { engine.isSelf(it) }, key = { "c" + it.id }) { c ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onPick(c, null) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (engine.isSelf(c)) SelfAvatar(32) else Avatar(c.name, 32); Spacer(Modifier.width(10.dp)); Text(chatName(engine, c))
+                }
+            }
+            items(groups, key = { "g" + it.id }) { g ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onPick(null, g) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GroupAvatar(32); Spacer(Modifier.width(10.dp)); Text(g.name)
+                }
+            }
+        }
+    }, confirmButton = {}, dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } })
 }
 
 @Composable
@@ -256,7 +296,8 @@ internal fun Banner(bg: Color, icon: ImageVector, text: String, onClick: () -> U
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Bubble(engine: Engine, m: Message, quoted: Message?, nameOf: (Message) -> String, sender: String?, onRetry: () -> Unit, onTapImage: (Bitmap) -> Unit,
-           onReply: () -> Unit, onReact: () -> Unit, onReactTap: (String?) -> Unit, onEdit: () -> Unit, onDeleteAll: () -> Unit, onDeleteLocal: () -> Unit, onQuoteTap: (String) -> Unit) {
+           onReply: () -> Unit, onReact: () -> Unit, onReactTap: (String?) -> Unit, onEdit: () -> Unit, onDeleteAll: () -> Unit, onDeleteLocal: () -> Unit, onQuoteTap: (String) -> Unit,
+           onForward: () -> Unit = {}) {
     if (m.isNote) {   // notatka systemowa grupy (ktoś dodał, opuścił, zmienił)
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text(m.text, color = Sowa.textMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 4.dp)) }
         return
@@ -296,6 +337,7 @@ fun Bubble(engine: Engine, m: Message, quoted: Message?, nameOf: (Message) -> St
                     if (!m.deleted) {
                         DropdownMenuItem({ Text(stringResource(R.string.reply)) }, { menu = false; onReply() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, null) })
                         DropdownMenuItem({ Text(stringResource(R.string.react)) }, { menu = false; onReact() }, leadingIcon = { Icon(Icons.Default.AddReaction, null) })
+                        if (m.kind == Message.TEXT || m.attachmentFile != null) DropdownMenuItem({ Text(stringResource(R.string.forward)) }, { menu = false; onForward() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Forward, null) })
                         if (m.kind == Message.TEXT) DropdownMenuItem({ Text(stringResource(R.string.copy)) }, { menu = false; clipboard.setText(AnnotatedString(m.text)) }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) })
                         if (m.hasAttachment && m.attachmentFile != null) DropdownMenuItem({ Text(stringResource(R.string.share)) }, { menu = false; openAttachment(ctx, engine, m, share = true) }, leadingIcon = { Icon(Icons.Default.Share, null) })
                         if (m.isMine && m.kind == Message.TEXT) DropdownMenuItem({ Text(stringResource(R.string.edit)) }, { menu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
@@ -313,6 +355,7 @@ fun Bubble(engine: Engine, m: Message, quoted: Message?, nameOf: (Message) -> St
                     Message.PENDING -> Icon(Icons.Default.Schedule, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
                     Message.SENT -> Icon(Icons.Default.Check, null, tint = Sowa.textMuted, modifier = Modifier.size(10.dp))
                     Message.DELIVERED -> Icon(Icons.Default.CheckCircle, null, tint = Sowa.cyan, modifier = Modifier.size(10.dp))
+                    Message.READ -> Icon(Icons.Default.DoneAll, stringResource(R.string.read_status), tint = Sowa.magenta, modifier = Modifier.size(12.dp))
                     else -> Text(stringResource(R.string.retry), color = Sowa.warn, fontSize = 10.sp, modifier = Modifier.clickable(onClick = onRetry))
                 }
             }

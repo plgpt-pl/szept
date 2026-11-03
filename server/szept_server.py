@@ -15,7 +15,8 @@ API v1 (JSON, base64 standard):
   GET    /v1/keys              (auth)      ile kluczy jednorazowych zostało
   GET    /v1/keys/{account_id}             bundle odbiorcy (zużywa 1 prekey + 1 kyber_prekey, gdy są; 10/min na (IP, konto),
                                            ostatnie 5 kluczy jednorazowych nie trafia dwa razy w ciągu godziny do tego samego IP)
-  PUT    /v1/messages/{account_id}         {messages:[{content}]} - zakolejkuj koperty (bez auth; 60 kopert/min na (IP, odbiorca);
+  PUT    /v1/messages/{account_id}         {messages:[{content, urgent?}]} - zakolejkuj koperty (bez auth; 60 kopert/min na (IP, odbiorca);
+                                           urgent=false (potwierdzenia, „pisze…”) nie wywołuje pusha – jak `urgent` w Signalu;
                                            pełna skrzynka = najstarsze nieodebrane koperty są wypierane)
   GET    /v1/messages          (auth)      nieodebrane koperty
   DELETE /v1/messages/{id}     (auth)      potwierdzenie odbioru
@@ -485,7 +486,8 @@ async def put_messages(req):
         raise web.HTTPTooManyRequests(text="slow down")
     n = store(req).enqueue(account_id, contents)
     req.app["wake"](account_id)
-    req.app["notify"](account_id)
+    if any((m or {}).get("urgent", True) is not False for m in msgs):
+        req.app["notify"](account_id)
     return web.json_response({"queued": n})
 
 

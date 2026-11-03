@@ -12,11 +12,18 @@ import java.io.File
 
 data class Contact(val id: String, var name: String, var identityKey: ByteArray, var verified: Boolean = false, var identityChanged: Boolean = false,
                    val createdAt: Long = System.currentTimeMillis(), var lastActivity: Long = System.currentTimeMillis(), var unread: Int = 0,
-                   var disappearAfter: Int = 0, var fromUnknown: Boolean = false)
+                   var disappearAfter: Int = 0, var fromUnknown: Boolean = false,
+                   // 0.4: przypięcie i wyciszenie (mutedUntil w ms; 0 = nie, Long.MAX_VALUE = zawsze)
+                   var pinned: Boolean = false, var mutedUntil: Long = 0) {
+    fun isMuted(now: Long = System.currentTimeMillis()) = mutedUntil > now
+}
 
 /** Grupa istnieje tylko w telefonach członków (docs/GRUPY.md). `members` = account_id pozostałych członków (bez mnie). */
 data class Group(val id: String, var name: String, var members: List<String>, val createdAt: Long = System.currentTimeMillis(),
-                 var lastActivity: Long = System.currentTimeMillis(), var unread: Int = 0, var disappearAfter: Int = 0, var left: Boolean = false)
+                 var lastActivity: Long = System.currentTimeMillis(), var unread: Int = 0, var disappearAfter: Int = 0, var left: Boolean = false,
+                 var pinned: Boolean = false, var mutedUntil: Long = 0) {
+    fun isMuted(now: Long = System.currentTimeMillis()) = mutedUntil > now
+}
 
 /** `contactId` = rozmowa 1:1 (null dla wiadomości grupowych); `groupId` = grupa; `senderId` = nadawca cudzej wiadomości grupowej. */
 data class Message(val id: String, val contactId: String?, var text: String, val isMine: Boolean, val sentAt: Long, var status: Int = 0,
@@ -26,7 +33,7 @@ data class Message(val id: String, val contactId: String?, var text: String, val
                    var kind: String = TEXT, var replyTo: String? = null, var reactions: String = "{}", var editedAt: Long? = null, var deleted: Boolean = false,
                    var fileName: String? = null, var mime: String? = null, var duration: Double = 0.0) {
     companion object {
-        const val PENDING = 0; const val SENT = 1; const val DELIVERED = 2; const val FAILED = 3
+        const val PENDING = 0; const val SENT = 1; const val DELIVERED = 2; const val FAILED = 3; const val READ = 4
         const val TEXT = "text"; const val IMAGE = "image"; const val FILE = "file"; const val AUDIO = "audio"
     }
     val hasAttachment get() = kind == IMAGE || kind == FILE || kind == AUDIO
@@ -47,7 +54,7 @@ data class Message(val id: String, val contactId: String?, var text: String, val
 fun durationLabel(sec: Double): String { val s = sec.toInt(); return "%d:%02d".format(s / 60, s % 60) }
 
 /** Lokalna baza (katalog poza kopią zapasową). Zmiany sygnalizowane przez `version` – ekrany Compose odświeżają się same. */
-class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context, File(context.noBackupFilesDir, name).path, null, 3) {
+class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context, File(context.noBackupFilesDir, name).path, null, 4) {
     val version = MutableStateFlow(0)
     private fun bump() { version.value++ }
 
@@ -59,6 +66,7 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
         db.execSQL("CREATE INDEX msg_contact ON messages(contact_id, sent_at)")
         createGroups(db)
         addV3Columns(db)
+        addV4Columns(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -67,6 +75,13 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
             createGroups(db)
         }
         if (oldVersion < 3) addV3Columns(db)
+        if (oldVersion < 4) addV4Columns(db)
+    }
+    /** 0.4: przypięte i wyciszone rozmowy (docs/WERSJA-0.4.md §3). */
+    private fun addV4Columns(db: SQLiteDatabase) {
+        for (t in listOf("contacts", "groups")) for (c in listOf("pinned INTEGER DEFAULT 0", "muted_until INTEGER DEFAULT 0")) {
+            try { db.execSQL("ALTER TABLE $t ADD COLUMN $c") } catch (_: Exception) {}
+        }
     }
     /** 0.3: rodzaj, odpowiedzi, reakcje, edycja, usunięcie, plik, głosówka. Stare zdjęcia (att_w>0) dostają kind=image. */
     private fun addV3Columns(db: SQLiteDatabase) {
@@ -82,15 +97,16 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
         db.execSQL("CREATE INDEX IF NOT EXISTS msg_group ON messages(group_id, sent_at)")
     }
 
-    private fun Cursor.contact() = Contact(getString(0), getString(1), getBlob(2), getInt(3) == 1, getInt(4) == 1, getLong(5), getLong(6), getInt(7), getInt(8), getInt(9) == 1)
+    private fun Cursor.contact() = Contact(getString(0), getString(1), getBlob(2), getInt(3) == 1, getInt(4) == 1, getLong(5), getLong(6), getInt(7), getInt(8), getInt(9) == 1,
+        getInt(10) == 1, getLong(11))
     private fun Cursor.message() = Message(getString(0), if (isNull(1)) null else getString(1), getString(2), getInt(3) == 1, getLong(4), getInt(5), getString(6), getInt(7), getInt(8),
         if (isNull(9)) null else getLong(9), if (isNull(10)) null else getString(10), if (isNull(11)) null else getString(11),
         kind = getString(12) ?: Message.TEXT, replyTo = if (isNull(13)) null else getString(13), reactions = getString(14) ?: "{}", editedAt = if (isNull(15)) null else getLong(15),
         deleted = getInt(16) == 1, fileName = if (isNull(17)) null else getString(17), mime = if (isNull(18)) null else getString(18), duration = getDouble(19))
-    private fun Cursor.group() = Group(getString(0), getString(1), membersFromJson(getString(2)), getLong(3), getLong(4), getInt(5), getInt(6), getInt(7) == 1)
-    private val CCOLS = "id,name,identity_key,verified,identity_changed,created_at,last_activity,unread,disappear_after,from_unknown"
+    private fun Cursor.group() = Group(getString(0), getString(1), membersFromJson(getString(2)), getLong(3), getLong(4), getInt(5), getInt(6), getInt(7) == 1, getInt(8) == 1, getLong(9))
+    private val CCOLS = "id,name,identity_key,verified,identity_changed,created_at,last_activity,unread,disappear_after,from_unknown,pinned,muted_until"
     private val MCOLS = "id,contact_id,text,is_mine,sent_at,status,attachment_file,att_w,att_h,expires_at,group_id,sender_id,kind,reply_to,reactions,edited_at,deleted,file_name,mime,duration"
-    private val GCOLS = "id,name,members,created_at,last_activity,unread,disappear_after,left"
+    private val GCOLS = "id,name,members,created_at,last_activity,unread,disappear_after,left,pinned,muted_until"
 
     private fun membersFromJson(s: String?): List<String> = if (s.isNullOrEmpty()) emptyList() else JSONArray(s).let { a -> (0 until a.length()).map { a.getString(it) } }
     private fun membersToJson(m: List<String>): String = JSONArray(m).toString()
@@ -104,6 +120,7 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
         writableDatabase.insertWithOnConflict("contacts", null, ContentValues().apply {
             put("id", c.id); put("name", c.name); put("identity_key", c.identityKey); put("verified", c.verified); put("identity_changed", c.identityChanged)
             put("created_at", c.createdAt); put("last_activity", c.lastActivity); put("unread", c.unread); put("disappear_after", c.disappearAfter); put("from_unknown", c.fromUnknown)
+            put("pinned", c.pinned); put("muted_until", c.mutedUntil)
         }, SQLiteDatabase.CONFLICT_REPLACE); bump()
     }
     fun deleteContact(id: String) { writableDatabase.delete("messages", "contact_id=? AND group_id IS NULL", arrayOf(id)); writableDatabase.delete("contacts", "id=?", arrayOf(id)); bump() }
@@ -114,7 +131,7 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
     fun save(g: Group) {
         writableDatabase.insertWithOnConflict("groups", null, ContentValues().apply {
             put("id", g.id); put("name", g.name); put("members", membersToJson(g.members)); put("created_at", g.createdAt); put("last_activity", g.lastActivity)
-            put("unread", g.unread); put("disappear_after", g.disappearAfter); put("left", g.left)
+            put("unread", g.unread); put("disappear_after", g.disappearAfter); put("left", g.left); put("pinned", g.pinned); put("muted_until", g.mutedUntil)
         }, SQLiteDatabase.CONFLICT_REPLACE); bump()
     }
     fun deleteGroup(id: String) { writableDatabase.delete("messages", "group_id=?", arrayOf(id)); writableDatabase.delete("groups", "id=?", arrayOf(id)); bump() }
@@ -134,6 +151,27 @@ class Db(context: Context, name: String = "szept.db") : SQLiteOpenHelper(context
             put("deleted", m.deleted); put("file_name", m.fileName); put("mime", m.mime); put("duration", m.duration)
         }, SQLiteDatabase.CONFLICT_REPLACE); bump()
     }
+    /** Ostatnia wiadomość OD rozmówcy (do reguły „rozmowa na żywo” wskaźnika pisania i do potwierdzeń przeczytania). */
+    fun lastIncoming(contactId: String): Message? = readableDatabase.rawQuery("SELECT $MCOLS FROM messages WHERE contact_id=? AND group_id IS NULL AND is_mine=0 ORDER BY sent_at DESC LIMIT 1", arrayOf(contactId)).use { if (it.moveToFirst()) it.message() else null }
+    fun lastIncomingForGroup(groupId: String): Message? = readableDatabase.rawQuery("SELECT $MCOLS FROM messages WHERE group_id=? AND is_mine=0 AND sender_id IS NOT NULL ORDER BY sent_at DESC LIMIT 1", arrayOf(groupId)).use { if (it.moveToFirst()) it.message() else null }
+    /** Potwierdzenie przeczytania: moje wiadomości 1:1 do `upTo` włącznie (wysłane/dostarczone) → READ. */
+    fun markMineRead(contactId: String, upTo: Long): Int {
+        val n = writableDatabase.update("messages", ContentValues().apply { put("status", Message.READ) },
+            "contact_id=? AND group_id IS NULL AND is_mine=1 AND sent_at<=? AND status IN (${Message.SENT},${Message.DELIVERED})", arrayOf(contactId, "$upTo"))
+        if (n > 0) bump(); return n
+    }
+    /** Wyszukiwanie w treści tekstów (bez usuniętych i notatek systemowych), najnowsze pierwsze. Porównanie w Kotlinie,
+     *  bo LIKE w SQLite ignoruje wielkość liter tylko dla ASCII (ą/Ą itd. by nie pasowały). */
+    fun search(q: String, limit: Int = 50): List<Message> {
+        val needle = q.trim().lowercase(); if (needle.isEmpty()) return emptyList()
+        val out = ArrayList<Message>()
+        readableDatabase.rawQuery("SELECT $MCOLS FROM messages WHERE kind='text' AND deleted=0 AND text<>'' " +
+            "AND NOT (group_id IS NOT NULL AND sender_id IS NULL AND is_mine=0) ORDER BY sent_at DESC", null).use { c ->
+            while (out.size < limit && c.moveToNext()) { val m = c.message(); if (m.text.lowercase().contains(needle)) out.add(m) }
+        }
+        return out
+    }
+    fun deleteMessagesOf(contactId: String) { writableDatabase.delete("messages", "contact_id=? AND group_id IS NULL", arrayOf(contactId)); bump() }
     fun deleteMessage(id: String) { writableDatabase.delete("messages", "id=?", arrayOf(id)); bump() }
     fun expired(now: Long): List<Message> = readableDatabase.rawQuery("SELECT $MCOLS FROM messages WHERE expires_at IS NOT NULL AND expires_at<?", arrayOf("$now")).use { c -> c.all { message() } }
     fun wipe() { writableDatabase.delete("messages", null, null); writableDatabase.delete("contacts", null, null); writableDatabase.delete("groups", null, null); bump() }

@@ -23,6 +23,7 @@ class SzeptApp : Application() {
         instance = this
         Strings.ctx = this
         engine = Engine(this)
+        engine.isForeground = { inForeground }
         Notifications.channels(this)
         engine.onIncoming = { if (!inForeground) Notifications.newMessage(this) }
         engine.onIncomingGroup = { if (!inForeground) Notifications.newMessage(this) }

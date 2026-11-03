@@ -20,7 +20,9 @@ struct ChatView: View {
     @State private var customEmoji = ""
     @State private var scrollTo: String?
     @State private var recorder = VoiceRecorder()
+    @State private var forwarding: Message?
     @FocusState private var focused: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     init(target: ChatTarget) { self.target = target }
     init(contact: Contact) { self.target = .contact(contact) }
@@ -65,8 +67,22 @@ struct ChatView: View {
         .navigationTitle(target.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        Text(target.name).font(.headline).lineLimit(1)
+                        if target.isMuted { Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Sowa.textMuted) }
+                    }
+                    if let typing = engine.typingLabel(in: target) {
+                        Text(typing).font(.caption2.italic()).foregroundStyle(Sowa.cyan).transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: engine.typingLabel(in: target))
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    ChatMenu(target: target)
+                    Divider()
                     Picker("Znikające wiadomości", selection: Binding(get: { target.disappearAfter },
                                                                     set: { v in Task { await engine.setDisappear(v, for: target) } })) {
                         ForEach(Durations.options, id: \.0) { Label($0.1, systemImage: "timer").tag($0.0) }
@@ -105,7 +121,10 @@ struct ChatView: View {
             Button("Anuluj", role: .cancel) { customEmoji = ""; customEmojiFor = nil }
         } message: { Text("Wpisz emoji, którym chcesz zareagować.") }
         .onAppear { engine.markRead(target) }
-        .onDisappear { AudioPlayer.shared.stop(); if recorder.isRecording { recorder.cancel() } }
+        .onDisappear { AudioPlayer.shared.stop(); if recorder.isRecording { recorder.cancel() }; engine.userStoppedTyping(in: target) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { engine.markRead(target) } }
+        .onChange(of: draft) { _, text in if editing == nil { engine.userTyping(in: target, text: text) } }
+        .sheet(item: $forwarding) { m in NavigationStack { ForwardSheet(message: m) } }
         .onChange(of: target.unread) { _, _ in engine.markRead(target) }
         .onChange(of: photo) { _, item in
             guard let item else { return }
@@ -137,6 +156,7 @@ struct ChatView: View {
             onDeleteLocal: { if editing?.id == m.id { editing = nil; draft = "" }; if replyTo?.id == m.id { replyTo = nil }; engine.deleteLocally(m) },
             onTapQuote: { scrollTo = $0 },
             onOpenFile: { if let u = engine.exportURL(for: m) { quickLook = u } },
+            onForward: { forwarding = m },
             exportURL: { engine.exportURL(for: m) })
     }
 
@@ -168,7 +188,7 @@ struct ChatView: View {
                         let t = draft; draft = ""
                         Haptics.light()
                         if let e = editing { editing = nil; Task { await engine.edit(e, text: t) } }
-                        else { let reply = replyTo?.id; replyTo = nil; Task { await engine.sendText(t, to: target, replyTo: reply) } }
+                        else { let reply = replyTo?.id; replyTo = nil; engine.userStoppedTyping(in: target); Task { await engine.sendText(t, to: target, replyTo: reply) } }
                     } label: {
                         Image(systemName: editing == nil ? "arrow.up" : "checkmark").font(.headline.bold()).foregroundStyle(.white)
                             .frame(width: 38, height: 38).background(Sowa.action, in: Circle())
@@ -277,6 +297,7 @@ struct BubbleActions {
     var onDeleteLocal: () -> Void
     var onTapQuote: (String) -> Void
     var onOpenFile: () -> Void
+    var onForward: () -> Void = {}
     var exportURL: () -> URL?
 }
 
@@ -427,6 +448,9 @@ struct Bubble: View {
             Button { actions.onCustomReact() } label: { Label("Inna reakcja…", systemImage: "face.smiling") }
             Divider()
             Button { actions.onReply() } label: { Label("Odpowiedz", systemImage: "arrowshape.turn.up.left") }
+            if !message.text.isEmpty || message.attachmentFile != nil {
+                Button { actions.onForward() } label: { Label("Przekaż", systemImage: "arrowshape.turn.up.right") }
+            }
             if message.kind == .text && !message.text.isEmpty {
                 Button { UIPasteboard.general.string = message.text } label: { Label("Kopiuj", systemImage: "doc.on.doc") }
             }
@@ -448,6 +472,7 @@ struct Bubble: View {
         case .pending: Image(systemName: "clock").font(.system(size: 9))
         case .sent: Image(systemName: "checkmark").font(.system(size: 9))
         case .delivered: Image(systemName: "checkmark.circle.fill").font(.system(size: 9)).foregroundStyle(Sowa.cyan)
+        case .read: Image(systemName: "eye.circle.fill").font(.system(size: 9)).foregroundStyle(Sowa.magenta)
         case .failed: Button(action: actions.onRetry) { Label("ponów", systemImage: "exclamationmark.arrow.circlepath").font(.system(size: 10)).foregroundStyle(Sowa.warn) }
         }
     }
@@ -497,5 +522,32 @@ struct ImagePreview: View {
             Image(uiImage: image).resizable().scaledToFit()
             Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white).padding() }
         }
+    }
+}
+
+
+/// Wybór rozmowy, do której przekazać wiadomość (docs/WERSJA-0.4.md §2).
+struct ForwardSheet: View {
+    @Environment(Engine.self) private var engine
+    @Environment(\.dismiss) private var dismiss
+    let message: Message
+    var body: some View {
+        List(engine.allTargets()) { t in
+            Button {
+                Task { await engine.forward(message, to: t) }
+                Haptics.light(); dismiss()
+            } label: {
+                HStack(spacing: 12) {
+                    if t.isGroup { GroupAvatar(size: 36) } else { Avatar(name: t.name, size: 36) }
+                    Text(t.name).foregroundStyle(.primary)
+                }
+            }
+            .listRowBackground(Sowa.card)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Sowa.backdrop.ignoresSafeArea())
+        .navigationTitle("Przekaż do")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Anuluj") { dismiss() } } }
     }
 }

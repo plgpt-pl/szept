@@ -13,6 +13,8 @@ final class Contact {
     var unread: Int = 0
     var disappearAfter: Int = 0                  // sekundy; 0 = wiadomości nie znikają
     var fromUnknown: Bool = false                // pierwsza wiadomość przyszła bez wcześniejszego dodania
+    var pinned: Bool = false                     // 0.4: przypięta na górze listy
+    var mutedUntil: Date?                        // 0.4: wyciszona do (distantFuture = zawsze)
     @Relationship(deleteRule: .cascade, inverse: \Message.contact) var messages: [Message] = []
 
     init(id: String, name: String, identityKey: Data) {
@@ -31,6 +33,8 @@ final class ChatGroup {
     var unread: Int = 0
     var disappearAfter: Int = 0
     var left: Bool = false
+    var pinned: Bool = false
+    var mutedUntil: Date?
     @Relationship(deleteRule: .cascade, inverse: \Message.group) var messages: [Message] = []
 
     init(id: String = UUID().uuidString, name: String, members: [String]) {
@@ -40,7 +44,7 @@ final class ChatGroup {
 
 @Model
 final class Message {
-    enum Status: Int { case pending = 0, sent = 1, delivered = 2, failed = 3 }
+    enum Status: Int { case pending = 0, sent = 1, delivered = 2, failed = 3, read = 4 }
 
     @Attribute(.unique) var id: String
     var contact: Contact?

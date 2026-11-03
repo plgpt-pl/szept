@@ -9,21 +9,22 @@ struct ChatListView: View {
     @State private var showNewGroup = false
     @State private var showSettings = false
     @State private var leaving: ChatGroup?
+    @State private var query = ""
 
-    /// Wiersze listy: kontakty i grupy razem, po ostatniej aktywności.
+    /// Wiersze listy: przypięte na górze, potem wg ostatniej aktywności; przy wyszukiwaniu – pasujące nazwą.
     private var rows: [ChatTarget] {
-        (contacts.map { ChatTarget.contact($0) } + groups.map { ChatTarget.group($0) })
-            .sorted { a, b in
-                let la: Date = { if case .contact(let c) = a { return c.lastActivity } else if case .group(let g) = a { return g.lastActivity }; return .distantPast }()
-                let lb: Date = { if case .contact(let c) = b { return c.lastActivity } else if case .group(let g) = b { return g.lastActivity }; return .distantPast }()
-                return la > lb
-            }
+        let all = (contacts.map { ChatTarget.contact($0) } + groups.map { ChatTarget.group($0) })
+            .sorted { a, b in a.pinned != b.pinned ? a.pinned : a.lastActivity > b.lastActivity }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? all : all.filter { $0.name.localizedStandardContains(q) }
     }
+
+    private var hits: [Message] { engine.searchMessages(query) }
 
     var body: some View {
         ZStack {
             Sowa.backdrop.ignoresSafeArea()
-            if contacts.isEmpty && groups.isEmpty {
+            if contacts.allSatisfy({ $0.id == engine.accountId }) && groups.isEmpty {
                 VStack(spacing: 16) {
                     SzeptLogo(size: 90)
                     Text("Nikogo tu jeszcze nie ma").font(.title3.weight(.semibold))
@@ -34,25 +35,42 @@ struct ChatListView: View {
                 }
             } else {
                 List {
-                    ForEach(rows) { row in
-                        NavigationLink(value: row.id) {
-                            switch row {
-                            case .contact(let c): ContactRow(contact: c)
-                            case .group(let g): GroupRow(group: g)
+                    Section {
+                        ForEach(rows) { row in
+                            NavigationLink(value: row.id) {
+                                switch row {
+                                case .contact(let c): ContactRow(contact: c)
+                                case .group(let g): GroupRow(group: g)
+                                }
                             }
+                            .listRowBackground(Sowa.card)
+                            .swipeActions(edge: .leading) {
+                                Button { engine.togglePin(row) } label: {
+                                    Label(row.pinned ? "Odepnij" : "Przypnij", systemImage: row.pinned ? "pin.slash" : "pin")
+                                }.tint(Sowa.violet)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { remove(row) } label: { Label("Usuń", systemImage: "trash") }
+                                Button { engine.setMute(row, until: row.isMuted ? nil : .distantFuture) } label: {
+                                    Label(row.isMuted ? "Włącz dźwięk" : "Wycisz", systemImage: row.isMuted ? "bell" : "bell.slash")
+                                }.tint(.gray)
+                            }
+                            .contextMenu { ChatMenu(target: row) }
                         }
-                        .listRowBackground(Sowa.card)
                     }
-                    .onDelete { idx in
-                        for row in idx.map({ rows[$0] }) {
-                            switch row {
-                            case .contact(let c): engine.delete(c)
-                            case .group(let g): leaving = g
+                    if !hits.isEmpty {
+                        Section("Wiadomości") {
+                            ForEach(hits) { m in
+                                if let t = engine.target(of: m) {
+                                    NavigationLink(value: t.id) { SearchHitRow(message: m, target: t) }
+                                        .listRowBackground(Sowa.card)
+                                }
                             }
                         }
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .searchable(text: $query, prompt: Text("Szukaj"))
                 .navigationDestination(for: String.self) { id in
                     if id.hasPrefix("g:"), let g = engine.group(id: String(id.dropFirst(2))) { ChatView(target: .group(g)) }
                     else if let c = engine.contact(id: id) { ChatView(target: .contact(c)) }
@@ -72,7 +90,7 @@ struct ChatListView: View {
                 Menu {
                     Button { showAdd = true } label: { Label("Dodaj kontakt", systemImage: "qrcode") }
                     Button { showNewGroup = true } label: { Label("Nowa grupa", systemImage: "person.3") }
-                        .disabled(contacts.isEmpty)
+                        .disabled(contacts.allSatisfy { $0.id == engine.accountId })
                 } label: { Image(systemName: "plus.circle.fill") }
             }
         }
@@ -80,6 +98,70 @@ struct ChatListView: View {
         .onAppear { if CommandLine.arguments.contains("-demo-add") { showAdd = true } }
         .sheet(isPresented: $showNewGroup) { NavigationStack { NewGroupView() } }
         .sheet(isPresented: $showSettings) { NavigationStack { SettingsView() } }
+    }
+
+    private func remove(_ row: ChatTarget) {
+        switch row { case .contact(let c): engine.delete(c); case .group(let g): leaving = g }
+    }
+}
+
+/// Menu rozmowy: przypnij, wycisz na czas, włącz dźwięk (lista rozmów i czat).
+struct ChatMenu: View {
+    @Environment(Engine.self) private var engine
+    let target: ChatTarget
+    var body: some View {
+        Button { engine.togglePin(target) } label: {
+            Label(target.pinned ? "Odepnij" : "Przypnij", systemImage: target.pinned ? "pin.slash" : "pin")
+        }
+        if target.isMuted {
+            Button { engine.setMute(target, until: nil) } label: { Label("Włącz dźwięk", systemImage: "bell") }
+        } else {
+            Menu {
+                Button("1 godzina") { engine.setMute(target, until: Date().addingTimeInterval(3600)) }
+                Button("8 godzin") { engine.setMute(target, until: Date().addingTimeInterval(8 * 3600)) }
+                Button("1 tydzień") { engine.setMute(target, until: Date().addingTimeInterval(7 * 86400)) }
+                Button("Zawsze") { engine.setMute(target, until: .distantFuture) }
+            } label: { Label("Wycisz", systemImage: "bell.slash") }
+        }
+    }
+}
+
+/// Pinezka i wyciszenie przy nazwie rozmowy.
+struct RowBadges: View {
+    let target: ChatTarget
+    var body: some View {
+        if target.pinned { Image(systemName: "pin.fill").font(.caption2).foregroundStyle(Sowa.textMuted) }
+        if target.isMuted { Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Sowa.textMuted) }
+    }
+}
+
+/// Podgląd ostatniej wiadomości albo „pisze…”.
+struct PreviewText: View {
+    @Environment(Engine.self) private var engine
+    let target: ChatTarget
+    let fallback: String
+    var body: some View {
+        if let typing = engine.typingLabel(in: target) {
+            Text(typing).font(.subheadline.italic()).foregroundStyle(Sowa.cyan).lineLimit(1)
+        } else {
+            Text(fallback).font(.subheadline).foregroundStyle(Sowa.textMuted).lineLimit(1)
+        }
+    }
+}
+
+struct SearchHitRow: View {
+    let message: Message
+    let target: ChatTarget
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(target.name).font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(message.sentAt, format: .dateTime.day().month().hour().minute()).font(.caption2).foregroundStyle(Sowa.textMuted)
+            }
+            Text(message.text).font(.subheadline).foregroundStyle(Sowa.textMuted).lineLimit(2)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -107,18 +189,19 @@ struct ContactRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(contact.name).font(.headline)
+                    RowBadges(target: .contact(contact))
                     if contact.verified { Image(systemName: "checkmark.seal.fill").font(.caption).foregroundStyle(Sowa.ok) }
                     if contact.identityChanged { Image(systemName: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(Sowa.warn) }
                     Spacer()
                     Text(contact.lastActivity, style: .relative).font(.caption2).foregroundStyle(Sowa.textMuted)
                 }
                 HStack {
-                    Text(preview).font(.subheadline).foregroundStyle(Sowa.textMuted).lineLimit(1)
+                    PreviewText(target: .contact(contact), fallback: preview)
                     Spacer()
                     if contact.disappearAfter > 0 { Image(systemName: "timer").font(.caption2).foregroundStyle(Sowa.textMuted) }
                     if contact.unread > 0 {
                         Text("\(contact.unread)").font(.caption2.bold()).padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Sowa.action, in: Capsule()).foregroundStyle(.white)
+                            .background(ChatTarget.contact(contact).isMuted ? AnyShapeStyle(Color.gray) : AnyShapeStyle(Sowa.action), in: Capsule()).foregroundStyle(.white)
                     }
                 }
             }

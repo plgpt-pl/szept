@@ -5,7 +5,7 @@ import SwiftData
 /// Grupy przez rozsyłanie (docs/GRUPY.md): trzy telefony przez prawdziwy serwer 127.0.0.1:11437. Pomijany, gdy serwer nie działa.
 @MainActor
 final class GroupTests: XCTestCase {
-    let server = URL(string: "http://127.0.0.1:11437")!
+    let server = URL(string: ProcessInfo.processInfo.environment["SZEPT_TEST_SERVER"] ?? "http://127.0.0.1:11437")!
 
     func makeEngine(_ scope: String, name: String) throws -> Engine {
         Keychain.set(nil as String?, account: scope + "token"); Keychain.set(nil as String?, account: scope + "account_id")

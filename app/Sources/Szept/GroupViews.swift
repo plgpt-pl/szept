@@ -3,12 +3,13 @@ import SwiftData
 
 /// Wybór kontaktów (do nowej grupy albo dodania osób).
 struct ContactPicker: View {
+    @Environment(Engine.self) private var engine
     @Query(sort: \Contact.name) private var contacts: [Contact]
     @Binding var selected: Set<String>
     var excluding: Set<String> = []
 
     var body: some View {
-        let list = contacts.filter { !excluding.contains($0.id) }
+        let list = contacts.filter { !excluding.contains($0.id) && $0.id != engine.accountId }   // bez notatki dla siebie
         if list.isEmpty {
             Text("Brak kontaktów do dodania. Najpierw dodaj kogoś kodem QR.").foregroundStyle(Sowa.textMuted)
         }
@@ -165,16 +166,17 @@ struct GroupRow: View {
                 HStack {
                     Text(group.name).font(.headline)
                     Text("\(group.members.count + 1) os.").font(.caption2).foregroundStyle(Sowa.textMuted)
+                    RowBadges(target: .group(group))
                     Spacer()
                     Text(group.lastActivity, style: .relative).font(.caption2).foregroundStyle(Sowa.textMuted)
                 }
                 HStack {
-                    Text(preview).font(.subheadline).foregroundStyle(Sowa.textMuted).lineLimit(1)
+                    PreviewText(target: .group(group), fallback: preview)
                     Spacer()
                     if group.disappearAfter > 0 { Image(systemName: "timer").font(.caption2).foregroundStyle(Sowa.textMuted) }
                     if group.unread > 0 {
                         Text("\(group.unread)").font(.caption2.bold()).padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Sowa.action, in: Capsule()).foregroundStyle(.white)
+                            .background(ChatTarget.group(group).isMuted ? AnyShapeStyle(Color.gray) : AnyShapeStyle(Sowa.action), in: Capsule()).foregroundStyle(.white)
                     }
                 }
             }

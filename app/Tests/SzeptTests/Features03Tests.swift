@@ -5,7 +5,7 @@ import SwiftData
 /// 0.3 (docs/WERSJA-0.3.md): odpowiedzi, reakcje, edycja, usuwanie, pliki, głosówki – JSON i e2e przez lokalny serwer 127.0.0.1:11437.
 @MainActor
 final class Features03Tests: XCTestCase {
-    let server = URL(string: "http://127.0.0.1:11437")!
+    let server = URL(string: ProcessInfo.processInfo.environment["SZEPT_TEST_SERVER"] ?? "http://127.0.0.1:11437")!
 
     func makeEngine(_ scope: String, name: String) throws -> Engine {
         Keychain.set(nil as String?, account: scope + "token"); Keychain.set(nil as String?, account: scope + "account_id")

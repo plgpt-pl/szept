@@ -68,6 +68,14 @@ enum Demo {
         g.lastActivity = now.addingTimeInterval(-200)
 
         ola.lastActivity = now.addingTimeInterval(-240); marek.lastActivity = now.addingTimeInterval(-60)
+        // 0.4: przypięta Ola, wyciszony Tomek, Ola pisze, przeczytane, notatka
+        ola.pinned = true; tomek.mutedUntil = .distantFuture
+        e.typing["OLAxxxxxxxxxxxxxxxxxxx"] = ["OLAxxxxxxxxxxxxxxxxxxx": .distantFuture]
+        ok.status = .read; pdf.status = .read
+        let note = Contact(id: "DEMOxxxxxxxxxxxxxxxxxx", name: String(localized: "Notatka dla siebie"), identityKey: key); note.verified = true
+        ctx.insert(note)
+        let n = Message(contact: note, text: String(localized: "Kod do furtki: 4471 🔑"), isMine: true, sentAt: now.addingTimeInterval(-50_000)); n.status = .sent
+        ctx.insert(n); note.lastActivity = now.addingTimeInterval(-50_000)
         try? ctx.save()
     }
 }

@@ -15,7 +15,9 @@ import java.util.concurrent.TimeUnit
 @Serializable data class KeyCounts(val prekeys: Int, val kyber_prekeys: Int)
 @Serializable private data class Uploaded(val id: String)
 @Serializable private data class Health(val ok: Boolean)
-@Serializable private data class DeliverBody(val messages: List<Item>) { @Serializable data class Item(val content: String) }
+/** `urgent = false` (potwierdzenia, „pisze…”, reakcje, edycje, usunięcia) – serwer nie budzi odbiorcy pushem (docs/WERSJA-0.4.md §1.3).
+ *  `null` = pole pominięte w JSON (domyślnie pilne, zgodnie ze starszym serwerem). */
+@Serializable private data class DeliverBody(val messages: List<Item>) { @Serializable data class Item(val content: String, val urgent: Boolean? = null) }
 
 /** Klient serwera-skrzynki: tylko losowy account_id i token, bez ciasteczek i cache. */
 class SzeptApi(@Volatile var baseUrl: String, @Volatile var token: String?) {
@@ -44,7 +46,9 @@ class SzeptApi(@Volatile var baseUrl: String, @Volatile var token: String?) {
     fun keyCounts(): KeyCounts = call("GET", "v1/keys")
     fun bundle(accountId: String): BundleJSON = call("GET", "v1/keys/$accountId", auth = false)
     /** Wysyłka bez uwierzytelnienia – serwer nie wie, kto jest nadawcą. */
-    fun deliver(sealed: List<ByteArray>, to: String) { send(req("PUT", "v1/messages/$to", json.encodeToString(DeliverBody.serializer(), DeliverBody(sealed.map { DeliverBody.Item(it.b64()) })), auth = false)) }
+    fun deliver(sealed: List<ByteArray>, to: String, urgent: Boolean = true) {
+        send(req("PUT", "v1/messages/$to", json.encodeToString(DeliverBody.serializer(), DeliverBody(sealed.map { DeliverBody.Item(it.b64(), if (urgent) null else false) })), auth = false))
+    }
     fun pending(): List<Pending> = call<PendingList>("GET", "v1/messages").messages
     fun ack(id: Long) { send(req("DELETE", "v1/messages/$id", auth = true)) }
     fun uploadAttachment(data: ByteArray): String = json.decodeFromString<Uploaded>(String(send(req("POST", "v1/attachments", bytes = data, auth = true)))).id

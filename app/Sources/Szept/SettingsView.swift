@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(AppLock.self) private var lock
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearance") private var appearance = "dark"
+    @AppStorage("read_receipts") private var readReceipts = true
+    @AppStorage("typing_indicators") private var typingIndicators = true
     @State private var name = ""
     @State private var server = ""
     @State private var serverOK: Bool?
@@ -24,6 +26,13 @@ struct SettingsView: View {
                 Picker("Wygląd", selection: $appearance) {
                     Text("Ciemny").tag("dark"); Text("Jasny").tag("light"); Text("Systemowy").tag("system")
                 }
+            }
+            Section {
+                Toggle("Potwierdzenia przeczytania", isOn: $readReceipts)
+                Toggle("Wskaźnik pisania", isOn: $typingIndicators)
+                    .onChange(of: typingIndicators) { _, on in if !on { engine.typing = [:] } }
+            } header: { Text("Prywatność") } footer: {
+                Text("Działa w obie strony: jeśli wyłączysz, nie zobaczysz też tego u innych.")
             }
             Section("Serwer") {
                 TextField("Adres", text: $server).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()

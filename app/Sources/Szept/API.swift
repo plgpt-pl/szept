@@ -76,10 +76,10 @@ final class SzeptAPI {
     }
 
     /// Wysyłka bez uwierzytelnienia – serwer nie wie, kto jest nadawcą.
-    func deliver(_ sealed: [Data], to accountId: String) async throws {
-        struct Body: Encodable { struct M: Encodable { var content: String }; var messages: [M] }
+    func deliver(_ sealed: [Data], to accountId: String, urgent: Bool = true) async throws {
+        struct Body: Encodable { struct M: Encodable { var content: String; var urgent: Bool? }; var messages: [M] }
         _ = try await send(try request("PUT", "v1/messages/\(accountId)",
-                                       json: Body(messages: sealed.map { .init(content: $0.base64EncodedString()) }), auth: false))
+                                       json: Body(messages: sealed.map { .init(content: $0.base64EncodedString(), urgent: urgent ? nil : false) }), auth: false))
     }
 
     func pending() async throws -> [Pending] {

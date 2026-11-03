@@ -21,6 +21,26 @@
         }
       }
     },
+    "%@ pisze…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is typing…"
+          }
+        }
+      }
+    },
+    "%@ piszą…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ are typing…"
+          }
+        }
+      }
+    },
     "%@ wyłączył(a) znikające wiadomości": {
       "localizations": {
         "en": {
@@ -147,6 +167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "5 minutes"
+          }
+        }
+      }
+    },
+    "8 godzin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "8 hours"
           }
         }
       }
@@ -401,6 +431,16 @@
         }
       }
     },
+    "Działa w obie strony: jeśli wyłączysz, nie zobaczysz też tego u innych.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Works both ways: if you turn it off, you won't see it from others either."
+          }
+        }
+      }
+    },
     "Dzięki!": {
       "localizations": {
         "en": {
@@ -587,6 +627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "One-time keys on the server"
+          }
+        }
+      }
+    },
+    "Kod do furtki: 4471 🔑": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gate code: 4471 🔑"
           }
         }
       }
@@ -791,6 +841,16 @@
         }
       }
     },
+    "Notatka dla siebie": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note to self"
+          }
+        }
+      }
+    },
     "Nowa grupa": {
       "localizations": {
         "en": {
@@ -857,6 +917,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Unlock Szept"
+          }
+        }
+      }
+    },
+    "Odepnij": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unpin"
           }
         }
       }
@@ -1001,12 +1071,62 @@
         }
       }
     },
+    "Potwierdzenia przeczytania": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read receipts"
+          }
+        }
+      }
+    },
     "Powiadomienia push": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Push notifications"
+          }
+        }
+      }
+    },
+    "Prywatność": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        }
+      }
+    },
+    "Przekaż": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forward"
+          }
+        }
+      }
+    },
+    "Przekaż do": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forward to"
+          }
+        }
+      }
+    },
+    "Przypnij": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin"
           }
         }
       }
@@ -1187,6 +1307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Szept is locked"
+          }
+        }
+      }
+    },
+    "Szukaj": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
           }
         }
       }
@@ -1461,6 +1591,16 @@
         }
       }
     },
+    "Wiadomości": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages"
+          }
+        }
+      }
+    },
     "Wiadomość usunięta": {
       "localizations": {
         "en": {
@@ -1477,6 +1617,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Type the emoji you want to react with."
+          }
+        }
+      }
+    },
+    "Wskaźnik pisania": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Typing indicators"
+          }
+        }
+      }
+    },
+    "Wycisz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mute"
           }
         }
       }
@@ -1521,6 +1681,16 @@
         }
       }
     },
+    "Włącz dźwięk": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmute"
+          }
+        }
+      }
+    },
     "Zaakceptuj nowy klucz kontaktu": {
       "localizations": {
         "en": {
@@ -1557,6 +1727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Save and check"
+          }
+        }
+      }
+    },
+    "Zawsze": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always"
           }
         }
       }
@@ -1707,6 +1887,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "offline"
+          }
+        }
+      }
+    },
+    "pisze…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "typing…"
           }
         }
       }
