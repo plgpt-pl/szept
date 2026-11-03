@@ -1,0 +1,7 @@
+Szept v4 — weryfikacja eksportu
+
+18 wpisów katalogu: wszystkie pliki istnieją i mają właściwe rozmiary.
+13 unikalnych plików PNG: 8-bit RGB, bez kanału alfa i bez chunku tRNS.
+Ikona 1024 × 1024: identyczna bajtowo z zatwierdzonym eksportem v4; profil sRGB.
+Katalog AppIcon: poprawnie skompilowany narzędziem Xcode actool dla iPhone i iPad, iOS 17+.
+Weryfikacja dotyczy zasobów ikon, bez archiwizacji i wysyłania aplikacji.
