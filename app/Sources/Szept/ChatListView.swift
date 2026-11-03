@@ -77,6 +77,7 @@ struct ChatListView: View {
             }
         }
         .sheet(isPresented: $showAdd) { NavigationStack { AddContactView() } }
+        .onAppear { if CommandLine.arguments.contains("-demo-add") { showAdd = true } }
         .sheet(isPresented: $showNewGroup) { NavigationStack { NewGroupView() } }
         .sheet(isPresented: $showSettings) { NavigationStack { SettingsView() } }
     }

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<radialGradient id="bg" cx=".5" cy=".3" r=".85"><stop offset="0" stop-color="#3B2290"/><stop offset=".6" stop-color="#1A1250"/><stop offset="1" stop-color="#0A0E2B"/></radialGradient>
+<radialGradient id="moon" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#5CE6FF" stop-opacity=".55"/><stop offset="1" stop-color="#5CE6FF" stop-opacity="0"/></radialGradient>
+<linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9C6BFF"/><stop offset=".55" stop-color="#6A3CE0"/><stop offset="1" stop-color="#3D1F9E"/></linearGradient>
+<radialGradient id="shade" cx=".35" cy=".25" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="disc" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCD2FF"/></radialGradient>
+<radialGradient id="iris" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#B8F6FF"/><stop offset=".5" stop-color="#5CE6FF"/><stop offset="1" stop-color="#1E8FD0"/></radialGradient>
+<linearGradient id="wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E37BFF"/><stop offset="1" stop-color="#8A3BD8"/></linearGradient>
+<linearGradient id="belly" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9B6FF"/><stop offset="1" stop-color="#8E6CF0"/></linearGradient>
+<filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="22"/><feOffset dy="24"/><feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="glow"><feGaussianBlur stdDeviation="10"/></filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<circle cx="770" cy="250" r="260" fill="url(#moon)"/>
+<g fill="#fff"><circle cx="190" cy="200" r="5" opacity=".8"/><circle cx="300" cy="120" r="3" opacity=".6"/><circle cx="860" cy="560" r="4" opacity=".6"/><circle cx="140" cy="520" r="3" opacity=".5"/><circle cx="880" cy="140" r="3" opacity=".7"/>
+<path d="M240 330 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8z" opacity=".9"/></g>
+<g filter="url(#soft)">
+ <!-- ciało + uszy -->
+ <path fill="url(#body)" d="M512 250 C600 250 660 262 712 290 L790 210 Q806 198 806 222 L790 370 C830 440 846 520 846 600 C846 790 700 900 512 900 C324 900 178 790 178 600 C178 520 194 440 234 370 L218 222 Q218 198 234 210 L312 290 C364 262 424 250 512 250 Z"/>
+ <path fill="url(#shade)" d="M512 250 C600 250 660 262 712 290 L790 210 Q806 198 806 222 L790 370 C830 440 846 520 846 600 C846 790 700 900 512 900 C324 900 178 790 178 600 C178 520 194 440 234 370 L218 222 Q218 198 234 210 L312 290 C364 262 424 250 512 250 Z"/>
+ <!-- brzuch z piórkami -->
+ <path fill="url(#belly)" d="M512 600 C640 600 720 680 720 770 C720 850 630 896 512 896 C394 896 304 850 304 770 C304 680 384 600 512 600 Z" opacity=".9"/>
+ <g fill="none" stroke="#7A55E0" stroke-width="10" stroke-linecap="round" opacity=".7">
+  <path d="M430 720 q20 22 40 0"/><path d="M490 720 q20 22 40 0"/><path d="M550 720 q20 22 40 0"/>
+  <path d="M400 790 q20 22 40 0"/><path d="M460 790 q20 22 40 0"/><path d="M520 790 q20 22 40 0"/><path d="M580 790 q20 22 40 0"/>
+ </g>
+ <!-- tarcza twarzy -->
+ <path fill="url(#disc)" d="M512 400 Q462 330 386 330 Q262 330 262 456 Q262 582 386 582 Q462 582 512 520 Q562 582 638 582 Q762 582 762 456 Q762 330 638 330 Q562 330 512 400 Z"/>
+ <!-- brwi w V -->
+ <path d="M300 352 Q420 330 506 420 M718 352 Q604 330 518 420" stroke="#6A3CE0" stroke-width="18" fill="none" stroke-linecap="round" opacity=".8"/>
+ <!-- lewe oko otwarte -->
+ <circle cx="390" cy="462" r="86" fill="#1A1250"/>
+ <circle cx="390" cy="462" r="66" fill="url(#iris)"/>
+ <circle cx="390" cy="462" r="30" fill="#0A0E2B"/>
+ <circle cx="366" cy="436" r="16" fill="#fff"/><circle cx="414" cy="488" r="7" fill="#fff" opacity=".8"/>
+ <!-- prawe oko mruga -->
+ <path d="M564 470 Q634 520 704 470" stroke="#1A1250" stroke-width="26" fill="none" stroke-linecap="round"/>
+ <path d="M574 482 l-14 22 M612 500 l-6 26 M652 500 l6 26 M690 482 l14 22" stroke="#1A1250" stroke-width="10" stroke-linecap="round"/>
+ <!-- dziób -->
+ <path fill="#FFB86B" d="M512 520 L548 566 L512 616 L476 566 Z"/>
+ <path fill="#FFD9A8" d="M512 520 L548 566 L512 572 Z"/>
+ <!-- skrzydło przyłożone do dzioba -->
+ <linearGradient id="wing2" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#4A23B8"/><stop offset="1" stop-color="#8E5BFF"/></linearGradient>
+ <path fill="url(#wing2)" stroke="#B89BFF" stroke-width="6" d="M842 640 C850 760 780 850 690 870 C640 760 590 680 548 616 C530 588 534 556 560 548 C590 540 610 560 628 584 C690 600 780 610 842 640 Z"/>
+ <g fill="#A47DFF" stroke="#C9B6FF" stroke-width="5">
+  <ellipse cx="560" cy="566" rx="30" ry="22" transform="rotate(-50 560 566)"/>
+  <ellipse cx="584" cy="548" rx="30" ry="20" transform="rotate(-60 584 548)"/>
+  <ellipse cx="548" cy="594" rx="28" ry="20" transform="rotate(-35 548 594)"/>
+ </g>
+ <g stroke="#2E1580" stroke-opacity=".5" stroke-width="8" fill="none" stroke-linecap="round">
+  <path d="M640 640 C700 650 760 660 820 680"/><path d="M620 690 C680 710 740 730 800 760"/><path d="M640 750 C680 770 720 800 760 830"/>
+ </g>
+</g>
+</svg>

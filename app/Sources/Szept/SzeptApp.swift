@@ -10,6 +10,7 @@ struct SzeptApp: App {
     @State private var lock = AppLock()
     @AppStorage("appearance") private var appearance = "dark"
     @State private var pendingLink: ContactLink?
+    @State private var covered = false   // zasłona w przełączniku aplikacji (niezależna od blokady)
 
     init() { BackgroundRefresh.register() }
 
@@ -18,6 +19,7 @@ struct SzeptApp: App {
             Group {
                 if engine.isRegistered { MainView(pendingLink: $pendingLink) } else { OnboardingView() }
             }
+            .overlay { if covered && !lock.locked { PrivacyCover() } }
             .overlay { if lock.locked { LockScreen() } }   // overlay PRZED .environment – inaczej LockScreen nie widzi AppLock (crash na starcie przy włączonej blokadzie)
             .environment(engine)
             .environment(lock)
@@ -27,6 +29,7 @@ struct SzeptApp: App {
             .modelContainer(engine.container)
         }
         .onChange(of: scenePhase) { _, phase in
+            covered = phase != .active
             switch phase {
             case .active: lock.onActive(); engine.start(); if engine.connection != .online { engine.connect() }; Push.clearDelivered(); Push.registerIfAllowed()
             case .background: lock.onBackground(); BackgroundRefresh.schedule()
@@ -44,7 +47,8 @@ struct MainView: View {
         NavigationStack(path: $path) {
             ChatListView()
         }
-        .onAppear { if CommandLine.arguments.contains("-demo-open") { path.append("OLAxxxxxxxxxxxxxxxxxxx") } }
+        .onAppear { if CommandLine.arguments.contains("-demo-open") { path.append("OLAxxxxxxxxxxxxxxxxxxx") }
+            if CommandLine.arguments.contains("-demo-group") { path.append("g:DEMOGROUP") } }
         .sheet(item: $pendingLink) { link in
             NavigationStack { AddContactConfirm(link: link) }
                 .presentationDetents([.medium])

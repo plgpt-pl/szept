@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B0F33"/><stop offset="1" stop-color="#1C0F45"/></linearGradient>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="70"/></filter>
+<filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="28"/><feOffset dy="30"/><feComponentTransfer><feFuncA type="linear" slope=".5"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="eglow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<linearGradient id="glass" x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".5" stop-color="#fff" stop-opacity=".14"/><stop offset="1" stop-color="#fff" stop-opacity=".22"/></linearGradient>
+<linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>
+<clipPath id="bub"><path id="bp" d="M512 196 C700 196 846 326 846 490 C846 654 700 784 512 784 C470 784 430 778 392 766 L250 836 Q224 848 230 820 L262 700 C212 646 178 572 178 490 C178 326 324 196 512 196 Z"/></clipPath>
+</defs><g transform="translate(512 512) scale(0.74) translate(-512 -516)"><g filter="url(#shadow)">
+ <use href="#bp" fill="url(#glass)"/>
+</g>
+<g clip-path="url(#bub)">
+ <g filter="url(#blur)" opacity=".55"><circle cx="330" cy="330" r="230" fill="#9AF0FF"/><circle cx="720" cy="680" r="260" fill="#F0A8FF"/></g>
+ <path d="M178 196 L846 196 L846 330 Q520 420 178 360 Z" fill="#fff" opacity=".12"/>
+</g>
+<use href="#bp" fill="none" stroke="url(#rim)" stroke-width="10"/>
+<!-- oczy sowy -->
+<g filter="url(#eglow)">
+ <circle cx="420" cy="478" r="82" fill="#0B0F33" opacity=".85"/><circle cx="604" cy="478" r="82" fill="#0B0F33" opacity=".85"/>
+ <circle cx="420" cy="478" r="44" fill="#5CE6FF"/><circle cx="604" cy="478" r="44" fill="#E07BFF"/>
+</g>
+<circle cx="404" cy="460" r="13" fill="#fff"/><circle cx="588" cy="460" r="13" fill="#fff"/>
+<path d="M512 556 L538 592 L512 624 L486 592 Z" fill="#0B0F33" opacity=".85"/>
+<path d="M330 378 Q420 350 498 420 M694 378 Q604 350 526 420" stroke="#0B0F33" stroke-opacity=".7" stroke-width="16" fill="none" stroke-linecap="round"/>
+</g></svg>

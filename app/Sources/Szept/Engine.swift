@@ -101,6 +101,7 @@ final class Engine {
     func start() {
         guard isRegistered, !started else { return }
         started = true
+        if CommandLine.arguments.contains("-demo") { connection = .online; return }   // zrzuty: bez sieci, ale „online”
         connect()
         expiryTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.purgeExpired() }

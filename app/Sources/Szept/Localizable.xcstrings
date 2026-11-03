@@ -53,24 +53,6 @@
     },
     "%lld os.": {
       "localizations": {
-        "pl": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld os."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld os."
-                }
-              }
-            }
-          }
-        },
         "en": {
           "variations": {
             "plural": {
@@ -84,6 +66,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld members"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld os."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld os."
                 }
               }
             }
@@ -251,6 +251,16 @@
         }
       }
     },
+    "Ciasto biorę na siebie 🎂": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I'll take care of the cake 🎂"
+          }
+        }
+      }
+    },
     "Ciemny": {
       "localizations": {
         "en": {
@@ -317,6 +327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Members and settings"
+          }
+        }
+      }
+    },
+    "Do zobaczenia w sobotę!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See you on Saturday!"
           }
         }
       }
@@ -501,6 +521,26 @@
         }
       }
     },
+    "Ja przywiozę owoce z działki 🍓": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I'll bring fruit from the garden 🍓"
+          }
+        }
+      }
+    },
+    "Ja, wyślijcie listę": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me, send me the list"
+          }
+        }
+      }
+    },
     "Jasny": {
       "localizations": {
         "en": {
@@ -577,6 +617,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copy"
+          }
+        }
+      }
+    },
+    "Kto robi zakupy na niedzielę?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who's doing the shopping for Sunday?"
           }
         }
       }
@@ -831,6 +881,16 @@
         }
       }
     },
+    "Odsłuchane, wszystko jasne 👍": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listened, all clear 👍"
+          }
+        }
+      }
+    },
     "Opuścić grupę „%@”?": {
       "localizations": {
         "en": {
@@ -911,6 +971,16 @@
         }
       }
     },
+    "Podeślij mi link do Szeptu, dodam Mamę": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send me the Szept link, I'll add Mom"
+          }
+        }
+      }
+    },
     "Pokaż ten kod osobie, z którą chcesz rozmawiać, albo wyślij link innym kanałem. Kod zawiera Twój identyfikator i klucz publiczny – nic więcej.": {
       "localizations": {
         "en": {
@@ -957,6 +1027,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reaction"
+          }
+        }
+      }
+    },
+    "Rodzina 🏡": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Family 🏡"
           }
         }
       }
@@ -1037,6 +1117,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Check"
+          }
+        }
+      }
+    },
+    "Super, to widzimy się o 14": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Great, see you at 2 pm"
           }
         }
       }
@@ -1417,6 +1507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Off"
+          }
+        }
+      }
+    },
+    "Wyślesz mi plan na jutro?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can you send me the plan for tomorrow?"
           }
         }
       }

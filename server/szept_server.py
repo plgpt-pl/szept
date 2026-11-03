@@ -32,7 +32,7 @@ API v1 (JSON, base64 standard):
   DELETE /v1/push              (auth)      usunięcie tokenu push
   DELETE /v1/accounts          (auth)      skasowanie konta, kolejki, załączników i tokenu push
 """
-import asyncio, base64, hashlib, hmac, json, logging, os, secrets, sqlite3, time
+import asyncio, base64, hashlib, hmac, json, logging, os, re, secrets, sqlite3, time
 from collections import defaultdict, deque
 from pathlib import Path
 
@@ -624,10 +624,20 @@ def _read(name: str, default: str = "") -> str:
         return default
 
 
+def page_lang(req) -> str:
+    """Język strony bez JavaScriptu (CSP nie dopuszcza skryptów): ?lang= albo pierwszy język z Accept-Language."""
+    q = req.query.get("lang", "")
+    if q in ("pl", "en"):
+        return q
+    first = req.headers.get("Accept-Language", "pl").split(",")[0].strip().lower()
+    return "pl" if first.startswith("pl") or not first else "en"
+
+
 async def index(req):
     # wersja i suma APK wstawiane z plików obok APK – strona nigdy nie pokazuje nieaktualnej sumy
     html = (STATIC / "index.html").read_text()
     html = html.replace("{{APK_VERSION}}", _read("szept.apk.version", "?")).replace("{{APK_SHA256}}", _read("szept.apk.sha256", "brak"))
+    html = html.replace("{{LANG}}", page_lang(req))
     return web.Response(text=html, content_type="text/html", charset="utf-8")
 
 
@@ -637,6 +647,18 @@ async def privacy(req):
 
 async def icon(req):
     return web.FileResponse(STATIC / "ikona.png")
+
+
+IMG_NAME = re.compile(r"^[a-z0-9-]{1,40}\.(jpg|png)$")
+
+
+async def image(req):
+    # tylko płaskie nazwy z białej listy znaków – bez „..” i podkatalogów
+    name = req.match_info["name"]
+    path = STATIC / "img" / name
+    if not IMG_NAME.match(name) or not path.is_file():
+        raise web.HTTPNotFound()
+    return web.FileResponse(path)
 
 
 async def apk(req):
@@ -715,6 +737,7 @@ def make_app(data_dir: Path = DATA, push=None) -> web.Application:
         web.get("/", index),
         web.get("/prywatnosc", privacy),
         web.get("/ikona.png", icon),
+        web.get("/img/{name}", image),
         web.get("/szept.apk", apk),
         web.get("/szept.apk.sha256", apk_sum),
         web.get("/health", health),

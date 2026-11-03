@@ -43,3 +43,13 @@ struct LockScreen: View {
         }
     }
 }
+
+/// Zasłania treść, gdy apka nie jest aktywna – system robi wtedy zrzut do przełącznika aplikacji.
+struct PrivacyCover: View {
+    var body: some View {
+        ZStack {
+            Sowa.backdrop.ignoresSafeArea()
+            SzeptLogo(size: 96)
+        }
+    }
+}

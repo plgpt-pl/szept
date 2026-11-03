@@ -273,6 +273,21 @@ async def test_privacy_page(cli):
     assert r.headers["Content-Security-Policy"].startswith("default-src 'none'")
 
 
+async def test_static_images(cli):
+    r = await cli.get("/img/iphone-1.jpg")
+    assert r.status == 200 and r.headers["Content-Type"] == "image/jpeg"
+    for bad in ("/img/..%2Fszept_server.py", "/img/nie-ma.jpg", "/img/Iphone-1.JPG", "/img/x.svg"):
+        assert (await cli.get(bad)).status == 404, bad
+
+
+async def test_index_lang():
+    from aiohttp.test_utils import make_mocked_request as req
+    assert S.page_lang(req("GET", "/?lang=en")) == "en"
+    assert S.page_lang(req("GET", "/?lang=xx", headers={"Accept-Language": "pl-PL,pl;q=0.9"})) == "pl"
+    assert S.page_lang(req("GET", "/", headers={"Accept-Language": "de-DE,de;q=0.9"})) == "en"
+    assert S.page_lang(req("GET", "/")) == "pl"
+
+
 # --- push APNs (0.3, docs/WERSJA-0.3.md §3) ----------------------------------------------------------------
 
 TOKEN = "ab" * 32

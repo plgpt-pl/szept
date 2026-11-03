@@ -84,6 +84,8 @@
     <string name="my_id">My identifier: %1$s</string>
     <string name="one_time_keys">One-time keys on the server: %1$s</string>
     <string name="security">Security</string>
+    <string name="screen_security">Screen security</string>
+    <string name="screen_security_hint">Blocks screenshots and hides chats in the recent apps view</string>
     <string name="biometric_lock">Biometric / PIN lock</string>
     <string name="listen_bg">Listen in background</string>
     <string name="listen_bg_hint">A persistent connection to your server instead of Google services. You get a “New message” notification without content.</string>

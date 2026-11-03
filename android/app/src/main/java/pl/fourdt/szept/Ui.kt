@@ -369,6 +369,7 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
     var serverOk by remember { mutableStateOf<Boolean?>(null) }
     var listen by remember { mutableStateOf(engine.listenInBackground) }
     var lock by remember { mutableStateOf(engine.appLock) }
+    var screenSec by remember { mutableStateOf(engine.screenSecurity) }
     var counts by remember { mutableStateOf("…") }
     var confirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -386,6 +387,10 @@ fun SettingsScreen(engine: Engine, nav: NavHostController) {
             Card2 {
                 Text(stringResource(R.string.security), color = Sowa.cyan, fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.biometric_lock), Modifier.weight(1f)); Switch(lock, { lock = it; engine.appLock = it }) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text(stringResource(R.string.screen_security)); Text(stringResource(R.string.screen_security_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
+                    Switch(screenSec, { screenSec = it; engine.screenSecurity = it; (ctx as? MainActivity)?.applyScreenSecurity(it) })
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(stringResource(R.string.listen_bg)); Text(stringResource(R.string.listen_bg_hint), style = MaterialTheme.typography.bodySmall, color = Sowa.textMuted) }
                     Switch(listen, { listen = it; engine.listenInBackground = it; if (it) ListenService.start(ctx) else ListenService.stop(ctx) })

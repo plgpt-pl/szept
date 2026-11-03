@@ -1,6 +1,7 @@
 package pl.fourdt.szept
 
 import android.content.Intent
+import android.view.WindowManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +25,7 @@ class MainActivity : FragmentActivity() {
         handleIntent(intent)
         val engine = SzeptApp.instance.engine
         if (engine.appLock) locked.value = true
+        applyScreenSecurity(engine.screenSecurity)
         setContent {
             SzeptTheme {
                 val registered by engine.registered.collectAsState()
@@ -39,6 +41,10 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handleIntent(intent) }
 
     private fun handleIntent(i: Intent?) { i?.dataString?.let { ContactLink.parse(it) }?.let { pendingLink.value = it } }
+
+    fun applyScreenSecurity(on: Boolean) {
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    }
 
     fun authenticate() {
         val can = BiometricManager.from(this).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)

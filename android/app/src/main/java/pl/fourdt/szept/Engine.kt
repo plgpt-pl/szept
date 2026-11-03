@@ -78,6 +78,10 @@ class Engine(private val app: Context, keysDir: File = File(app.noBackupFilesDir
     var appLock: Boolean
         get() = prefs.getBoolean("app_lock", false)
         set(v) { prefs.edit().putBoolean("app_lock", v).apply() }
+    /** FLAG_SECURE: brak zrzutów ekranu i podglądu w ostatnich aplikacjach. */
+    var screenSecurity: Boolean
+        get() = prefs.getBoolean("screen_security", true)
+        set(v) { prefs.edit().putBoolean("screen_security", v).apply() }
 
     val myLink: ContactLink? get() = accountId?.let { ContactLink(it, proto.identityKey.serialize(), displayName.ifEmpty { null }) }
 

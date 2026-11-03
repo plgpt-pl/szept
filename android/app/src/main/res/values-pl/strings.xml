@@ -84,6 +84,8 @@
     <string name="my_id">Mój identyfikator: %1$s</string>
     <string name="one_time_keys">Klucze jednorazowe na serwerze: %1$s</string>
     <string name="security">Bezpieczeństwo</string>
+    <string name="screen_security">Ochrona ekranu</string>
+    <string name="screen_security_hint">Blokuje zrzuty ekranu i ukrywa rozmowy w ostatnich aplikacjach</string>
     <string name="biometric_lock">Blokada biometryczna / kodem</string>
     <string name="listen_bg">Nasłuch w tle</string>
     <string name="listen_bg_hint">Stałe połączenie z Twoim serwerem zamiast usług Google. Dostajesz powiadomienie „Nowa wiadomość” bez treści.</string>

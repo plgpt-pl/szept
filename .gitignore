@@ -20,3 +20,6 @@ app/.build-*/
 # kopie zapasowe z poprawek bezpieczeństwa
 *.bak-sec-*
 docs/zrzuty/appstore/
+docs/zrzuty/appstore-v3/
+docs/strona-podglad-*.png
+server/szept.db
